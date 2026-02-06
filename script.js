@@ -11,6 +11,7 @@ const cardQuestion = document.getElementById('card-question');
 const cardAnswer = document.getElementById('card-answer');
 const cardInner = document.getElementById('card-inner');
 const cardIndexDisplay = document.getElementById('card-index');
+const flashcardElement = document.getElementById('flashcard');
 
 // Load cards on startup
 document.addEventListener('DOMContentLoaded', fetchFlashcards);
@@ -123,6 +124,7 @@ async function addFlashcard() {
         setTimeout(() => {
             currentIndex = flashcards.length - 1;
             updateCardDisplay();
+            playCardAnimation('pop');
         }, 100);
 
     } catch (error) {
@@ -229,6 +231,17 @@ async function editFlashcard() {
     }
 }
 
+function playCardAnimation(animationClass) {
+    if (!flashcardElement) return;
+    flashcardElement.classList.remove('slide-left', 'slide-right', 'pop');
+    void flashcardElement.offsetWidth;
+    flashcardElement.classList.add(animationClass);
+}
+
+flashcardElement?.addEventListener('animationend', () => {
+    flashcardElement.classList.remove('slide-left', 'slide-right', 'pop');
+});
+
 
 // UI Logic
 function updateCardDisplay() {
@@ -249,11 +262,13 @@ function nextCard() {
     if(flashcards.length) {
         currentIndex = (currentIndex + 1) % flashcards.length; 
         updateCardDisplay(); 
+        playCardAnimation('slide-left');
     }
 }
 function prevCard() { 
     if(flashcards.length) {
         currentIndex = (currentIndex - 1 + flashcards.length) % flashcards.length; 
         updateCardDisplay(); 
+        playCardAnimation('slide-right');
     }
 }
