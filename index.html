@@ -64,20 +64,20 @@
             <h1>Flashcard Quiz</h1>
         </header>
 
-        <div class="card-creation">
-            <button id="save-btn" onclick="addFlashcard()">Add Flashcard</button>
-        </div>
-
         <div class="flashcard-container">
-            <div class="flashcard" id="flashcard" onclick="flipCard()">
-                <div class="card-inner" id="card-inner">
-                    <div class="card-front">
-                        <h2 id="card-question">Your Question Will Appear Here</h2>
-                    </div>
-                    <div class="card-back">
-                        <h2 id="card-answer">The Answer Will Appear Here</h2>
+            <div class="flashcard-row">
+                <div class="flashcard" id="flashcard" onclick="flipCard()">
+                    <div class="card-inner" id="card-inner">
+                        <div class="card-front">
+                            <h2 id="card-question">Your Question Will Appear Here</h2>
+                        </div>
+                        <div class="card-back">
+                            <h2 id="card-answer">The Answer Will Appear Here</h2>
+                        </div>
                     </div>
                 </div>
+
+                <button id="save-btn" class="add-btn" onclick="addFlashcard()" aria-label="Add flashcard">+</button>
             </div>
 
             <div class="controls">

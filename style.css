@@ -38,24 +38,13 @@ body {
 
 .container {
     width: 100%;
-    max-width: 600px;
+    max-width: 720px;
     padding: 20px;
     text-align: center;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-}
-
-/* Input Section Styling */
-.card-creation {
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 12px 24px rgba(20, 33, 61, 0.12);
-    margin-bottom: 20px;
-    border: 1px solid rgba(66, 133, 244, 0.12);
-    width: 100%;
 }
 
 .input-group {
@@ -104,14 +93,25 @@ button:active {
 .flashcard-container {
     perspective: 1000px; /* Essential for 3D effect */
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.flashcard-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 20px;
 }
 
 .flashcard {
     background-color: transparent;
-    width: 100%;
-    height: 300px;
+    width: min(560px, 100%);
+    height: 340px;
     cursor: pointer;
-    margin-bottom: 20px;
 }
 
 .flashcard.slide-left {
@@ -186,6 +186,29 @@ button:active {
 .actions button {
     margin: 0 5px;
     font-size: 0.9rem;
+}
+
+.add-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    padding: 0;
+    font-size: 2rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1f6fff;
+    box-shadow: 0 10px 20px rgba(31, 111, 255, 0.3);
+}
+
+.add-btn:hover {
+    background-color: #1b5ee0;
+}
+
+.add-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 6px 14px rgba(31, 111, 255, 0.25);
 }
 
 .delete-btn { background-color: #e53935; }
