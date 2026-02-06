@@ -15,56 +15,220 @@ const cardIndexDisplay = document.getElementById('card-index');
 // Load cards on startup
 document.addEventListener('DOMContentLoaded', fetchFlashcards);
 
+// Add this helper function at the top
+function getHeaders() {
+    const token = localStorage.getItem("userToken");
+    return {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` // Send the token to Python
+    };
+}
+
+// --- The Main Function ---
 async function fetchFlashcards() {
+    // 1. Check if we even have a token locally
+    const headers = getHeaders();
+    if (!headers.Authorization.includes("ey")) { 
+        // "ey" is the starting characters of all Firebase tokens. 
+        // If it's missing, the user definitely isn't logged in.
+        cardQuestion.textContent = "Please Login to see your cards.";
+        cardAnswer.textContent = "Click the Login button above.";
+        flashcards = []; // Clear any old data
+        updateCardDisplay();
+        return; // Stop here, don't bother the server
+    }
+
     try {
-        const res = await fetch(`${API_URL}/cards`);
-        flashcards = await res.json();
+        // 2. Make the Request to Python
+        const response = await fetch(`${API_URL}/cards`, { 
+            method: "GET",
+            headers: headers // We pass the security token here
+        });
+
+        // 3. Handle "Unauthorized" (Token expired or invalid)
+        if (response.status === 401) {
+            cardQuestion.textContent = "Session expired.";
+            cardAnswer.textContent = "Please logout and login again.";
+            return;
+        }
+
+        // 4. Handle other server errors (500, 404, etc.)
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        // 5. Success! Parse the data
+        flashcards = await response.json();
+        
+        // 6. Reset the view to the first card
         currentIndex = 0;
         updateCardDisplay();
-    } catch (e) {
-        console.error("Connection Error:", e);
-        cardQuestion.textContent = "Check console for connection error.";
+
+    } catch (error) {
+        // 7. Handle Network Errors (Server down, internet off)
+        console.error("Fetch error:", error);
+        cardQuestion.textContent = "Error loading cards.";
+        cardAnswer.textContent = "Check console for details.";
     }
 }
 
 async function addFlashcard() {
+    // 1. Get values from the input boxes
     const question = questionInput.value.trim();
     const answer = answerInput.value.trim();
-    if (!question || !answer) return alert("Fill in both fields");
 
-    await fetch(`${API_URL}/cards`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, answer })
-    });
-    
-    questionInput.value = '';
-    answerInput.value = '';
-    await fetchFlashcards();
+    // 2. Validate: Don't let them send empty cards
+    if (!question || !answer) {
+        alert("Please fill in both the Question and the Answer fields.");
+        return;
+    }
+
+    // 3. Security Check: Are they logged in?
+    const headers = getHeaders();
+    if (!headers.Authorization.includes("ey")) {
+        alert("You must be logged in to add a card.");
+        return;
+    }
+
+    try {
+        // 4. Send the data to Python
+        const response = await fetch(`${API_URL}/cards`, {
+            method: "POST",
+            headers: headers, // Pass the token here!
+            body: JSON.stringify({ 
+                question: question, 
+                answer: answer 
+            })
+        });
+
+        // 5. Handle Errors
+        if (response.status === 401) {
+            alert("Session expired. Please login again.");
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        // 6. Success! Clear the inputs
+        questionInput.value = '';
+        answerInput.value = '';
+
+        // 7. Refresh the list so the new card appears immediately
+        await fetchFlashcards();
+        
+        // Optional: Jump to the new card (usually the last one)
+        // We wait a tiny bit to ensure the list updated
+        setTimeout(() => {
+            currentIndex = flashcards.length - 1;
+            updateCardDisplay();
+        }, 100);
+
+    } catch (error) {
+        console.error("Error adding card:", error);
+        alert("Failed to save card. Check console for details.");
+    }
 }
 
 async function deleteFlashcard() {
+    // 1. Safety check: Are there even cards to delete?
     if (flashcards.length === 0) return;
-    const id = flashcards[currentIndex].id; // SQL ID
-    await fetch(`${API_URL}/cards/${id}`, { method: "DELETE" });
-    await fetchFlashcards();
+
+    // 2. Get the ID of the specific card you are looking at
+    const id = flashcards[currentIndex].id;
+
+    // 3. Security Check: Get the token
+    const headers = getHeaders();
+    if (!headers.Authorization.includes("ey")) {
+        alert("You must be logged in to delete cards.");
+        return;
+    }
+
+    if (!confirm("Are you sure you want to delete this card?")) return;
+
+    try {
+        // 4. Send the DELETE request WITH the header
+        const response = await fetch(`${API_URL}/cards/${id}`, { 
+            method: "DELETE",
+            headers: headers // <--- THIS WAS MISSING
+        });
+
+        // 5. Handle potential errors
+        if (response.status === 401) {
+            alert("Session expired. Please login again.");
+            return;
+        }
+        
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        // 6. Success! Reload the list to remove the card from the screen
+        await fetchFlashcards();
+        
+        // Adjust the view so it doesn't show a blank space
+        if (currentIndex >= flashcards.length) {
+            currentIndex = Math.max(0, flashcards.length - 1);
+        }
+        updateCardDisplay();
+
+    } catch (error) {
+        console.error("Delete failed:", error);
+        alert("Failed to delete card.");
+    }
 }
 
 async function editFlashcard() {
+    // 1. Safety Check: Are there cards to edit?
     if (flashcards.length === 0) return;
+
+    // 2. Security Check: Get the token
+    const headers = getHeaders();
+    if (!headers.Authorization.includes("ey")) {
+        alert("You must be logged in to edit cards.");
+        return;
+    }
+
     const card = flashcards[currentIndex];
+
+    // 3. Ask the user for new text
     const newQ = prompt("New Question:", card.question);
     const newA = prompt("New Answer:", card.answer);
     
+    // Only proceed if they actually typed something (and didn't click Cancel)
     if (newQ && newA) {
-        await fetch(`${API_URL}/cards/${card.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ question: newQ, answer: newA })
-        });
-        await fetchFlashcards();
+        try {
+            // 4. Send the PUT request WITH the header
+            const response = await fetch(`${API_URL}/cards/${card.id}`, {
+                method: "PUT",
+                headers: headers, // <--- THIS WAS MISSING
+                body: JSON.stringify({ 
+                    question: newQ, 
+                    answer: newA 
+                })
+            });
+
+            // 5. Handle Errors
+            if (response.status === 401) {
+                alert("Session expired. Please login again.");
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            // 6. Success! Refresh the list
+            await fetchFlashcards();
+
+        } catch (error) {
+            console.error("Edit failed:", error);
+            alert("Failed to update card.");
+        }
     }
 }
+
 
 // UI Logic
 function updateCardDisplay() {
