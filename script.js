@@ -5,8 +5,6 @@ const API_URL = "https://flashcardapp-pwic.onrender.com";
 let flashcards = [];
 let currentIndex = 0;
 
-const questionInput = document.getElementById('question');
-const answerInput = document.getElementById('answer');
 const cardQuestion = document.getElementById('card-question');
 const cardAnswer = document.getElementById('card-answer');
 const cardInner = document.getElementById('card-inner');
@@ -74,12 +72,17 @@ async function fetchFlashcards() {
 }
 
 async function addFlashcard() {
-    // 1. Get values from the input boxes
-    const question = questionInput.value.trim();
-    const answer = answerInput.value.trim();
+    // 1. Ask the user for the card details
+    const question = prompt("Enter the question:");
+    if (question === null) return;
+    const answer = prompt("Enter the answer:");
+    if (answer === null) return;
+
+    const trimmedQuestion = question.trim();
+    const trimmedAnswer = answer.trim();
 
     // 2. Validate: Don't let them send empty cards
-    if (!question || !answer) {
+    if (!trimmedQuestion || !trimmedAnswer) {
         alert("Please fill in both the Question and the Answer fields.");
         return;
     }
@@ -97,8 +100,8 @@ async function addFlashcard() {
             method: "POST",
             headers: headers, // Pass the token here!
             body: JSON.stringify({ 
-                question: question, 
-                answer: answer 
+                question: trimmedQuestion, 
+                answer: trimmedAnswer 
             })
         });
 
@@ -111,10 +114,6 @@ async function addFlashcard() {
         if (!response.ok) {
             throw new Error(`Server error: ${response.status}`);
         }
-
-        // 6. Success! Clear the inputs
-        questionInput.value = '';
-        answerInput.value = '';
 
         // 7. Refresh the list so the new card appears immediately
         await fetchFlashcards();
