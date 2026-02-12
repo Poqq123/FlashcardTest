@@ -104,6 +104,42 @@ button:active {
     position: relative;
 }
 
+.collection-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.collection-controls label {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.collection-controls select {
+    min-width: 180px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+}
+
+.collection-btn {
+    background-color: #0f766e;
+}
+
+.collection-btn:hover {
+    background-color: #0d9488;
+}
+
+.active-collection {
+    margin: 4px 0 14px;
+    color: #334155;
+    font-size: 0.95rem;
+}
+
 .flashcard {
     background-color: transparent;
     width: min(560px, 100%);
@@ -220,6 +256,28 @@ button:active {
 .edit-btn:hover { background-color: #f9a825; }
 
 .error { color: red; margin-top: 10px; }
+
+@media (max-width: 768px) {
+    .auth-controls {
+        position: static;
+        justify-content: center;
+        margin-bottom: 12px;
+    }
+
+    .add-btn {
+        right: 10px;
+        top: 100%;
+        transform: translateY(-40%);
+    }
+
+    .add-btn:hover {
+        transform: translateY(-40%);
+    }
+
+    .add-btn:active {
+        transform: translateY(-40%) translateY(1px);
+    }
+}
 
 @keyframes slideLeft {
     0% { transform: translateX(24px) scale(0.98); opacity: 0; }

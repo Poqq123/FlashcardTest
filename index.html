@@ -65,6 +65,15 @@
         </header>
 
         <div class="flashcard-container">
+            <div class="collection-controls">
+                <label for="collection-select">Collection:</label>
+                <select id="collection-select" onchange="onCollectionChange()">
+                    <option value="all">All Collections</option>
+                </select>
+                <button class="collection-btn" onclick="createCollection()">New Collection</button>
+            </div>
+            <p id="active-collection" class="active-collection">Showing: All Collections</p>
+
             <div class="flashcard-row">
                 <div class="flashcard" id="flashcard" onclick="flipCard()">
                     <div class="card-inner" id="card-inner">

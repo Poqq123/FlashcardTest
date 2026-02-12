@@ -1,70 +1,221 @@
 // script.js
 // PASTE YOUR CODESPACE URL HERE (No trailing slash)
-const API_URL = "https://flashcardapp-pwic.onrender.com"; 
+const API_URL = "https://flashcardapp-pwic.onrender.com";
 
 let flashcards = [];
+let collections = [];
 let currentIndex = 0;
+let activeCollection = "all";
 
-const cardQuestion = document.getElementById('card-question');
-const cardAnswer = document.getElementById('card-answer');
-const cardInner = document.getElementById('card-inner');
-const cardIndexDisplay = document.getElementById('card-index');
-const flashcardElement = document.getElementById('flashcard');
+const cardQuestion = document.getElementById("card-question");
+const cardAnswer = document.getElementById("card-answer");
+const cardInner = document.getElementById("card-inner");
+const cardIndexDisplay = document.getElementById("card-index");
+const flashcardElement = document.getElementById("flashcard");
+const collectionSelect = document.getElementById("collection-select");
+const activeCollectionText = document.getElementById("active-collection");
 
-// Load cards on startup
-document.addEventListener('DOMContentLoaded', fetchFlashcards);
+document.addEventListener("DOMContentLoaded", initializeApp);
 
-// Add this helper function at the top
 function getHeaders() {
     const token = localStorage.getItem("userToken");
     return {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}` // Send the token to Python
+        "Authorization": `Bearer ${token}`
     };
 }
 
-// --- The Main Function ---
-async function fetchFlashcards() {
-    // 1. Check if we even have a token locally
-    const headers = getHeaders();
-    if (!headers.Authorization.includes("ey")) { 
-        // "ey" is the starting characters of all Firebase tokens. 
-        // If it's missing, the user definitely isn't logged in.
-        cardQuestion.textContent = "Please Login to see your cards.";
-        cardAnswer.textContent = "Click the Login button above.";
-        flashcards = []; // Clear any old data
-        updateCardDisplay();
-        return; // Stop here, don't bother the server
+function hasValidToken() {
+    const token = localStorage.getItem("userToken");
+    return Boolean(token && token.startsWith("ey"));
+}
+
+function getSelectedCollectionId() {
+    if (activeCollection === "all") return null;
+    const parsed = Number(activeCollection);
+    return Number.isInteger(parsed) ? parsed : null;
+}
+
+function getCollectionDisplayName(collection) {
+    if (!collection) return "All Collections";
+    if (collection.class_name) return `${collection.name} (${collection.class_name})`;
+    return collection.name;
+}
+
+function updateActiveCollectionLabel() {
+    if (!activeCollectionText) return;
+    if (activeCollection === "all") {
+        activeCollectionText.textContent = "Showing: All Collections";
+        return;
+    }
+
+    const selected = collections.find((collection) => String(collection.id) === String(activeCollection));
+    activeCollectionText.textContent = `Showing: ${getCollectionDisplayName(selected)}`;
+}
+
+function renderCollectionOptions() {
+    if (!collectionSelect) return;
+
+    const options = ['<option value="all">All Collections</option>'];
+    for (const collection of collections) {
+        options.push(
+            `<option value="${collection.id}">${getCollectionDisplayName(collection)}</option>`
+        );
+    }
+    collectionSelect.innerHTML = options.join("");
+    collectionSelect.value = activeCollection;
+    updateActiveCollectionLabel();
+}
+
+async function initializeApp() {
+    renderCollectionOptions();
+    await fetchCollections();
+    await fetchFlashcards();
+}
+
+async function fetchCollections() {
+    if (!hasValidToken()) {
+        collections = [];
+        activeCollection = "all";
+        renderCollectionOptions();
+        return;
     }
 
     try {
-        // 2. Make the Request to Python
-        const response = await fetch(`${API_URL}/cards`, { 
+        const response = await fetch(`${API_URL}/collections`, {
             method: "GET",
-            headers: headers // We pass the security token here
+            headers: getHeaders()
         });
 
-        // 3. Handle "Unauthorized" (Token expired or invalid)
+        if (response.status === 401) {
+            collections = [];
+            activeCollection = "all";
+            renderCollectionOptions();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        collections = await response.json();
+
+        if (
+            activeCollection !== "all" &&
+            !collections.some((collection) => String(collection.id) === String(activeCollection))
+        ) {
+            activeCollection = "all";
+        }
+
+        renderCollectionOptions();
+    } catch (error) {
+        console.error("Failed to load collections:", error);
+        collections = [];
+        activeCollection = "all";
+        renderCollectionOptions();
+    }
+}
+
+async function createCollection() {
+    if (!hasValidToken()) {
+        alert("You must be logged in to create a collection.");
+        return;
+    }
+
+    const nameInput = prompt("Collection name (example: Chapter 1):");
+    if (nameInput === null) return;
+    const classInput = prompt("Class name (optional, example: Biology 101):");
+
+    const name = nameInput.trim();
+    const className = classInput ? classInput.trim() : "";
+
+    if (!name) {
+        alert("Collection name cannot be empty.");
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/collections`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({
+                name: name,
+                class_name: className || null
+            })
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (response.status === 401) {
+            alert("Session expired. Please login again.");
+            return;
+        }
+
+        if (response.status === 409) {
+            alert(payload.detail || "That collection already exists.");
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        activeCollection = String(payload.id);
+        await fetchCollections();
+        await fetchFlashcards();
+    } catch (error) {
+        console.error("Failed to create collection:", error);
+        alert("Could not create collection.");
+    }
+}
+
+function onCollectionChange() {
+    if (!collectionSelect) return;
+    activeCollection = collectionSelect.value || "all";
+    updateActiveCollectionLabel();
+    fetchFlashcards();
+}
+
+function buildCardsUrl() {
+    const collectionId = getSelectedCollectionId();
+    if (collectionId === null) {
+        return `${API_URL}/cards`;
+    }
+
+    const params = new URLSearchParams({ collection_id: String(collectionId) });
+    return `${API_URL}/cards?${params.toString()}`;
+}
+
+async function fetchFlashcards() {
+    if (!hasValidToken()) {
+        cardQuestion.textContent = "Please Login to see your cards.";
+        cardAnswer.textContent = "Click the Login button above.";
+        flashcards = [];
+        currentIndex = 0;
+        updateCardDisplay();
+        return;
+    }
+
+    try {
+        const response = await fetch(buildCardsUrl(), {
+            method: "GET",
+            headers: getHeaders()
+        });
+
         if (response.status === 401) {
             cardQuestion.textContent = "Session expired.";
             cardAnswer.textContent = "Please logout and login again.";
             return;
         }
 
-        // 4. Handle other server errors (500, 404, etc.)
         if (!response.ok) {
             throw new Error(`Server error: ${response.status}`);
         }
 
-        // 5. Success! Parse the data
         flashcards = await response.json();
-        
-        // 6. Reset the view to the first card
         currentIndex = 0;
         updateCardDisplay();
-
     } catch (error) {
-        // 7. Handle Network Errors (Server down, internet off)
         console.error("Fetch error:", error);
         cardQuestion.textContent = "Error loading cards.";
         cardAnswer.textContent = "Check console for details.";
@@ -72,7 +223,6 @@ async function fetchFlashcards() {
 }
 
 async function addFlashcard() {
-    // 1. Ask the user for the card details
     const question = prompt("Enter the question:");
     if (question === null) return;
     const answer = prompt("Enter the answer:");
@@ -80,32 +230,27 @@ async function addFlashcard() {
 
     const trimmedQuestion = question.trim();
     const trimmedAnswer = answer.trim();
-
-    // 2. Validate: Don't let them send empty cards
     if (!trimmedQuestion || !trimmedAnswer) {
         alert("Please fill in both the Question and the Answer fields.");
         return;
     }
 
-    // 3. Security Check: Are they logged in?
-    const headers = getHeaders();
-    if (!headers.Authorization.includes("ey")) {
+    if (!hasValidToken()) {
         alert("You must be logged in to add a card.");
         return;
     }
 
     try {
-        // 4. Send the data to Python
         const response = await fetch(`${API_URL}/cards`, {
             method: "POST",
-            headers: headers, // Pass the token here!
-            body: JSON.stringify({ 
-                question: trimmedQuestion, 
-                answer: trimmedAnswer 
+            headers: getHeaders(),
+            body: JSON.stringify({
+                question: trimmedQuestion,
+                answer: trimmedAnswer,
+                collection_id: getSelectedCollectionId()
             })
         });
 
-        // 5. Handle Errors
         if (response.status === 401) {
             alert("Session expired. Please login again.");
             return;
@@ -115,17 +260,12 @@ async function addFlashcard() {
             throw new Error(`Server error: ${response.status}`);
         }
 
-        // 7. Refresh the list so the new card appears immediately
         await fetchFlashcards();
-        
-        // Optional: Jump to the new card (usually the last one)
-        // We wait a tiny bit to ensure the list updated
         setTimeout(() => {
             currentIndex = flashcards.length - 1;
             updateCardDisplay();
-            playCardAnimation('pop');
+            playCardAnimation("pop");
         }, 100);
-
     } catch (error) {
         console.error("Error adding card:", error);
         alert("Failed to save card. Check console for details.");
@@ -133,15 +273,10 @@ async function addFlashcard() {
 }
 
 async function deleteFlashcard() {
-    // 1. Safety check: Are there even cards to delete?
     if (flashcards.length === 0) return;
-
-    // 2. Get the ID of the specific card you are looking at
     const id = flashcards[currentIndex].id;
 
-    // 3. Security Check: Get the token
-    const headers = getHeaders();
-    if (!headers.Authorization.includes("ey")) {
+    if (!hasValidToken()) {
         alert("You must be logged in to delete cards.");
         return;
     }
@@ -149,33 +284,28 @@ async function deleteFlashcard() {
     if (!confirm("Are you sure you want to delete this card?")) return;
 
     try {
-        // 4. Send the DELETE request WITH the header
-        const response = await fetch(`${API_URL}/cards/${id}`, { 
+        const response = await fetch(`${API_URL}/cards/${id}`, {
             method: "DELETE",
-            headers: headers // <--- THIS WAS MISSING
+            headers: getHeaders()
         });
 
-        // 5. Handle potential errors
         if (response.status === 401) {
             alert("Session expired. Please login again.");
             return;
         }
-        
+
         if (!response.ok) {
             throw new Error(`Server error: ${response.status}`);
         }
 
-        // 6. Success! Pop the current card out before refreshing the list
-        playCardAnimation('pop-out');
+        playCardAnimation("pop-out");
         await wait(350);
         await fetchFlashcards();
-        
-        // Adjust the view so it doesn't show a blank space
+
         if (currentIndex >= flashcards.length) {
             currentIndex = Math.max(0, flashcards.length - 1);
         }
         updateCardDisplay();
-
     } catch (error) {
         console.error("Delete failed:", error);
         alert("Failed to delete card.");
@@ -183,36 +313,29 @@ async function deleteFlashcard() {
 }
 
 async function editFlashcard() {
-    // 1. Safety Check: Are there cards to edit?
     if (flashcards.length === 0) return;
 
-    // 2. Security Check: Get the token
-    const headers = getHeaders();
-    if (!headers.Authorization.includes("ey")) {
+    if (!hasValidToken()) {
         alert("You must be logged in to edit cards.");
         return;
     }
 
     const card = flashcards[currentIndex];
-
-    // 3. Ask the user for new text
     const newQ = prompt("New Question:", card.question);
     const newA = prompt("New Answer:", card.answer);
-    
-    // Only proceed if they actually typed something (and didn't click Cancel)
+
     if (newQ && newA) {
         try {
-            // 4. Send the PUT request WITH the header
             const response = await fetch(`${API_URL}/cards/${card.id}`, {
                 method: "PUT",
-                headers: headers, // <--- THIS WAS MISSING
-                body: JSON.stringify({ 
-                    question: newQ, 
-                    answer: newA 
+                headers: getHeaders(),
+                body: JSON.stringify({
+                    question: newQ.trim(),
+                    answer: newA.trim(),
+                    collection_id: card.collection_id ?? null
                 })
             });
 
-            // 5. Handle Errors
             if (response.status === 401) {
                 alert("Session expired. Please login again.");
                 return;
@@ -222,9 +345,7 @@ async function editFlashcard() {
                 throw new Error(`Server error: ${response.status}`);
             }
 
-            // 6. Success! Refresh the list
             await fetchFlashcards();
-
         } catch (error) {
             console.error("Edit failed:", error);
             alert("Failed to update card.");
@@ -234,7 +355,7 @@ async function editFlashcard() {
 
 function playCardAnimation(animationClass) {
     if (!flashcardElement) return;
-    flashcardElement.classList.remove('slide-left', 'slide-right', 'pop', 'pop-out');
+    flashcardElement.classList.remove("slide-left", "slide-right", "pop", "pop-out");
     void flashcardElement.offsetWidth;
     flashcardElement.classList.add(animationClass);
 }
@@ -243,37 +364,40 @@ function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-flashcardElement?.addEventListener('animationend', () => {
-    flashcardElement.classList.remove('slide-left', 'slide-right', 'pop', 'pop-out');
+flashcardElement?.addEventListener("animationend", () => {
+    flashcardElement.classList.remove("slide-left", "slide-right", "pop", "pop-out");
 });
 
-
-// UI Logic
 function updateCardDisplay() {
     if (flashcards.length === 0) {
-        cardQuestion.textContent = "No cards yet.";
+        cardQuestion.textContent = activeCollection === "all" ? "No cards yet." : "No cards in this collection yet.";
         cardAnswer.textContent = "...";
         cardIndexDisplay.textContent = "0 / 0";
         return;
     }
-    cardInner.classList.remove('flipped');
+
+    cardInner.classList.remove("flipped");
     cardQuestion.textContent = flashcards[currentIndex].question;
     cardAnswer.textContent = flashcards[currentIndex].answer;
     cardIndexDisplay.textContent = `${currentIndex + 1} / ${flashcards.length}`;
 }
 
-function flipCard() { cardInner.classList.toggle('flipped'); }
-function nextCard() { 
-    if(flashcards.length) {
-        currentIndex = (currentIndex + 1) % flashcards.length; 
-        updateCardDisplay(); 
-        playCardAnimation('slide-left');
+function flipCard() {
+    cardInner.classList.toggle("flipped");
+}
+
+function nextCard() {
+    if (flashcards.length) {
+        currentIndex = (currentIndex + 1) % flashcards.length;
+        updateCardDisplay();
+        playCardAnimation("slide-left");
     }
 }
-function prevCard() { 
-    if(flashcards.length) {
-        currentIndex = (currentIndex - 1 + flashcards.length) % flashcards.length; 
-        updateCardDisplay(); 
-        playCardAnimation('slide-right');
+
+function prevCard() {
+    if (flashcards.length) {
+        currentIndex = (currentIndex - 1 + flashcards.length) % flashcards.length;
+        updateCardDisplay();
+        playCardAnimation("slide-right");
     }
 }
