@@ -1,12 +1,5 @@
-# FlashcardTest
 
-A web-based flashcard application with:
-- FastAPI backend
-- Supabase Postgres database
-- Firebase Google authentication
-- Collections support (group cards by class/topic)
-
-Website: [FlashLearn](https://poqq123.github.io/FlashLearn/)
+* **Website: [FlashLearn](https://poqq123.github.io/FlashLearn/)**
 
 ## New Collections Feature
 
