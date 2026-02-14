@@ -1,107 +1,125 @@
+:root {
+    --bg-1: #f5efe5;
+    --bg-2: #e8dfd1;
+    --ink-1: #211c15;
+    --ink-2: #5f564c;
+    --panel: rgba(255, 252, 246, 0.72);
+    --line: rgba(95, 86, 76, 0.22);
+    --brand: #0f4c5c;
+    --brand-strong: #083e4d;
+    --accent: #bd8b3b;
+    --danger: #b5442d;
+    --shadow-lg: 0 24px 58px rgba(32, 26, 20, 0.16);
+    --shadow-md: 0 14px 32px rgba(32, 26, 20, 0.12);
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: radial-gradient(circle at top, #f7f9ff, #eef1f7 55%, #e7ecf6);
+    margin: 0;
+    min-height: 100vh;
+    padding: 24px;
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    color: var(--ink-1);
+    background:
+        radial-gradient(circle at 12% 8%, rgba(255, 255, 255, 0.7), transparent 42%),
+        radial-gradient(circle at 86% 14%, rgba(189, 139, 59, 0.22), transparent 34%),
+        linear-gradient(160deg, var(--bg-1), var(--bg-2) 56%, #ddd4c6 100%);
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    margin: 0;
-    padding: 24px;
     position: relative;
+    overflow-x: hidden;
+}
+
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    pointer-events: none;
+    z-index: 0;
+}
+
+body::before {
+    width: 380px;
+    height: 380px;
+    border-radius: 999px;
+    right: -130px;
+    top: -140px;
+    background: radial-gradient(circle, rgba(15, 76, 92, 0.26), rgba(15, 76, 92, 0));
+}
+
+body::after {
+    width: 420px;
+    height: 420px;
+    border-radius: 999px;
+    left: -170px;
+    bottom: -170px;
+    background: radial-gradient(circle, rgba(189, 139, 59, 0.22), rgba(189, 139, 59, 0));
 }
 
 .auth-controls {
     position: fixed;
     top: 24px;
     right: 24px;
-    left: auto;
     display: flex;
     gap: 10px;
-    z-index: 10;
-}
-
-.login-btn {
-    background-color: #1b5e20;
-}
-
-.login-btn:hover {
-    background-color: #2e7d32;
-}
-
-.logout-btn {
-    background-color: #6b7280;
-}
-
-.logout-btn:hover {
-    background-color: #4b5563;
+    z-index: 5;
+    animation: riseIn 0.65s ease both;
 }
 
 .container {
-    width: 100%;
-    max-width: 720px;
-    padding: 20px;
-    text-align: center;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.input-group {
-    margin-bottom: 10px;
-    text-align: left;
-}
-
-textarea {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    resize: vertical;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-textarea:focus {
-    outline: none;
-    border-color: #4285f4;
-    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
-}
-
-button {
-    background-color: #4285f4;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background 0.3s, transform 0.2s, box-shadow 0.2s;
-}
-
-button:hover {
-    background-color: #357ae8;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 14px rgba(53, 122, 232, 0.25);
-}
-
-button:active {
-    transform: translateY(1px);
-    box-shadow: none;
-}
-
-.flashcard-row {
     position: relative;
-    width: 560px;        /* FIX: Give it a real size so it doesn't collapse */
-    max-width: 90vw;     /* Safety for mobile screens */
-    margin: 0 auto;      /* Center it */
+    z-index: 2;
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    text-align: center;
+    animation: riseIn 0.7s ease both;
+}
+
+.page-header {
     margin-bottom: 20px;
 }
 
-/* THE FLASHCARD (3D Flip Logic) */
+.eyebrow {
+    margin: 0 0 6px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-2);
+}
+
+.page-header h1 {
+    margin: 0;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: 0.01em;
+}
+
+.subhead {
+    margin: 10px auto 0;
+    max-width: 640px;
+    font-size: 1rem;
+    color: var(--ink-2);
+}
+
 .flashcard-container {
-    perspective: 1000px; /* Essential for 3D effect */
+    perspective: 1200px;
     width: 100%;
-    position: relative;
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: var(--panel);
+    backdrop-filter: blur(8px);
+    box-shadow: var(--shadow-lg);
+    animation: riseIn 0.8s 0.08s ease both;
 }
 
 .collection-controls {
@@ -115,55 +133,39 @@ button:active {
 
 .collection-controls label {
     font-weight: 600;
-    color: #1f2937;
+    color: var(--ink-2);
 }
 
 .collection-controls select {
-    min-width: 180px;
-    padding: 8px 10px;
-    border-radius: 6px;
-    border: 1px solid #cbd5e1;
-    background: #fff;
-}
-
-.collection-btn {
-    background-color: #0f766e;
-}
-
-.collection-btn:hover {
-    background-color: #0d9488;
+    min-width: 210px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--ink-1);
+    font: inherit;
 }
 
 .active-collection {
-    margin: 4px 0 14px;
-    color: #334155;
-    font-size: 0.95rem;
+    margin: 2px 0 16px;
+    color: var(--ink-2);
+    font-size: 0.94rem;
+}
+
+.flashcard-row {
+    position: relative;
+    width: 560px;
+    max-width: 90vw;
+    margin: 0 auto 22px;
 }
 
 .flashcard {
     background-color: transparent;
     width: min(560px, 100%);
-    height: 340px;
+    height: 350px;
     cursor: pointer;
 }
 
-.flashcard.slide-left {
-    animation: slideLeft 0.45s ease;
-}
-
-.flashcard.slide-right {
-    animation: slideRight 0.45s ease;
-}
-
-.flashcard.pop {
-    animation: popIn 0.5s ease;
-}
-
-.flashcard.pop-out {
-    animation: popOut 0.35s ease;
-}
-
-/* The container that actually flips */
 .card-inner {
     position: relative;
     width: 100%;
@@ -171,111 +173,234 @@ button:active {
     text-align: center;
     transition: transform 0.6s cubic-bezier(0.6, 0.02, 0.3, 0.95);
     transform-style: preserve-3d;
-    box-shadow: 0 18px 34px rgba(20, 33, 61, 0.18);
-    border-radius: 10px;
+    border-radius: 18px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid rgba(95, 86, 76, 0.18);
 }
 
-/* JavaScript toggles this class to flip */
 .card-inner.flipped {
     transform: rotateY(180deg);
 }
 
-/* Front and Back common styles */
-.card-front, .card-back {
+.card-front,
+.card-back {
     position: absolute;
     width: 100%;
     height: 100%;
-    -webkit-backface-visibility: hidden; /* Safari */
+    -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
-    padding: 20px;
-    box-sizing: border-box;
+    border-radius: 18px;
+    padding: 30px;
 }
 
 .card-front {
-    background-color: #fff;
-    color: #333;
-    border: 1px solid rgba(17, 24, 39, 0.06);
+    background:
+        linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(249, 241, 229, 0.98));
+    color: var(--ink-1);
 }
 
 .card-back {
-    background-color: #4285f4;
-    color: white;
+    background:
+        linear-gradient(155deg, #0f4c5c 0%, #1c6071 55%, #2b7081 100%);
+    color: #f8fbff;
     transform: rotateY(180deg);
 }
 
-/* Controls */
-.controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    gap: 10px;
+.card-front h2,
+.card-back h2 {
+    margin: 0;
+    font-size: clamp(1.15rem, 2.4vw, 1.65rem);
+    line-height: 1.45;
 }
 
-.actions button {
-    margin: 0 5px;
+button {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 10px 18px;
+    font-size: 0.94rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    color: #f8fbff;
+    background: linear-gradient(160deg, var(--brand), var(--brand-strong));
+    box-shadow: 0 10px 22px rgba(8, 62, 77, 0.28);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(8, 62, 77, 0.32);
+    filter: saturate(1.05);
+}
+
+button:active {
+    transform: translateY(1px);
+    box-shadow: 0 6px 14px rgba(8, 62, 77, 0.22);
+}
+
+.login-btn {
+    background: linear-gradient(160deg, #1c6e47, #155538);
+}
+
+.logout-btn {
+    background: linear-gradient(160deg, #606770, #4a5159);
+}
+
+.collection-btn {
+    background: linear-gradient(160deg, #9b6a21, #82571b);
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+#card-index {
+    min-width: 92px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    background: rgba(255, 255, 255, 0.72);
     font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.edit-btn {
+    color: #23190a;
+    background: linear-gradient(160deg, #e6b760, #c99540);
+    box-shadow: 0 10px 22px rgba(176, 122, 36, 0.27);
+}
+
+.delete-btn {
+    background: linear-gradient(160deg, #c1553e, var(--danger));
+    box-shadow: 0 10px 22px rgba(144, 46, 26, 0.27);
 }
 
 .add-btn {
     position: absolute;
-    right: 0;
+    right: -18px;
     top: 50%;
     transform: translate(50%, -50%);
-    width: 56px;
-    height: 56px;
+    width: 58px;
+    height: 58px;
     border-radius: 50%;
     padding: 0;
-    font-size: 2rem;
-    line-height: 1;
+    font-size: 1.9rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background-color: #1f6fff;
-    box-shadow: 0 10px 20px rgba(31, 111, 255, 0.3);
+    color: #fff;
+    background: linear-gradient(160deg, #bd8b3b, #9e702a);
+    box-shadow: 0 12px 26px rgba(151, 105, 28, 0.36);
 }
 
 .add-btn:hover {
-    background-color: #1b5ee0;
-    transform: translate(50%, -50%);
-    box-shadow: 0 10px 20px rgba(31, 111, 255, 0.35);
+    transform: translate(50%, -50%) translateY(-1px);
 }
 
 .add-btn:active {
     transform: translate(50%, -50%) translateY(1px);
-    box-shadow: 0 6px 14px rgba(31, 111, 255, 0.25);
 }
 
-.delete-btn { background-color: #e53935; }
-.delete-btn:hover { background-color: #d32f2f; }
-.edit-btn { background-color: #fbc02d; color: black; }
-.edit-btn:hover { background-color: #f9a825; }
+.error {
+    margin-top: 10px;
+    color: #9d3320;
+}
 
-.error { color: red; margin-top: 10px; }
+.flashcard.slide-left {
+    animation: slideLeft 0.42s ease;
+}
+
+.flashcard.slide-right {
+    animation: slideRight 0.42s ease;
+}
+
+.flashcard.pop {
+    animation: popIn 0.46s ease;
+}
+
+.flashcard.pop-out {
+    animation: popOut 0.34s ease;
+}
+
+@media (max-width: 900px) {
+    .container {
+        max-width: 760px;
+    }
+}
 
 @media (max-width: 768px) {
+    body {
+        padding: 16px;
+        align-items: flex-start;
+    }
+
     .auth-controls {
         position: static;
         justify-content: center;
         margin-bottom: 12px;
     }
 
+    .page-header h1 {
+        font-size: clamp(1.9rem, 10vw, 2.5rem);
+    }
+
+    .flashcard-container {
+        padding: 18px 14px 20px;
+        border-radius: 20px;
+    }
+
+    .flashcard-row {
+        max-width: 100%;
+    }
+
+    .flashcard {
+        height: 320px;
+    }
+
     .add-btn {
-        right: 10px;
-        top: 100%;
-        transform: translateY(-40%);
+        top: auto;
+        bottom: -14px;
+        right: 50%;
+        transform: translateX(50%);
     }
 
     .add-btn:hover {
-        transform: translateY(-40%);
+        transform: translateX(50%) translateY(-1px);
     }
 
     .add-btn:active {
-        transform: translateY(-40%) translateY(1px);
+        transform: translateX(50%) translateY(1px);
+    }
+
+    .controls {
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+}
+
+@keyframes riseIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
@@ -290,13 +415,13 @@ button:active {
 }
 
 @keyframes popIn {
-    0% { transform: scale(0.96); opacity: 0.4; }
-    60% { transform: scale(1.02); opacity: 1; }
+    0% { transform: scale(0.95); opacity: 0.35; }
+    60% { transform: scale(1.015); opacity: 1; }
     100% { transform: scale(1); }
 }
 
 @keyframes popOut {
     0% { transform: scale(1); opacity: 1; }
-    40% { transform: scale(1.08) translateY(-6px); opacity: 0.85; }
-    100% { transform: scale(0.8) translateY(18px); opacity: 0; }
+    45% { transform: scale(1.06) translateY(-6px); opacity: 0.82; }
+    100% { transform: scale(0.82) translateY(18px); opacity: 0; }
 }
