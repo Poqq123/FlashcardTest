@@ -36,6 +36,10 @@ body {
     overflow-x: hidden;
 }
 
+body.modal-open {
+    overflow: hidden;
+}
+
 body::before,
 body::after {
     content: "";
@@ -321,6 +325,121 @@ button:active {
     color: #9d3320;
 }
 
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(24, 20, 16, 0.45);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.24s ease;
+}
+
+.modal-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-dialog {
+    width: min(560px, 100%);
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: linear-gradient(155deg, rgba(255, 252, 246, 0.98), rgba(246, 237, 223, 0.95));
+    color: var(--ink-1);
+    box-shadow: var(--shadow-lg);
+    padding: 20px 20px 18px;
+    text-align: left;
+    position: relative;
+    transform: translateY(8px) scale(0.985);
+    transition: transform 0.24s ease;
+}
+
+.modal-overlay.is-open .modal-dialog {
+    transform: translateY(0) scale(1);
+}
+
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    padding: 0;
+    font-size: 1.2rem;
+    line-height: 1;
+    background: linear-gradient(160deg, #7a7066, #61584f);
+    box-shadow: 0 8px 16px rgba(40, 33, 27, 0.24);
+}
+
+.modal-dialog h2 {
+    margin: 4px 0 6px;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(1.7rem, 4vw, 2.1rem);
+    font-weight: 600;
+}
+
+.modal-subtitle {
+    margin: 0 0 14px;
+    color: var(--ink-2);
+    font-size: 0.92rem;
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.modal-form label {
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #4e463f;
+}
+
+.modal-form textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 96px;
+    max-height: 220px;
+    border-radius: 13px;
+    border: 1px solid rgba(95, 86, 76, 0.26);
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--ink-1);
+    font: inherit;
+    line-height: 1.45;
+    padding: 11px 13px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.modal-form textarea:focus {
+    outline: none;
+    border-color: rgba(15, 76, 92, 0.6);
+    box-shadow: 0 0 0 4px rgba(15, 76, 92, 0.14);
+    transform: translateY(-1px);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.modal-cancel-btn {
+    background: linear-gradient(160deg, #787069, #5e5650);
+}
+
+.modal-save-btn {
+    background: linear-gradient(160deg, #0f4c5c, #0a3f4e);
+}
+
 .flashcard.slide-left {
     animation: slideLeft 0.42s ease;
 }
@@ -390,6 +509,20 @@ button:active {
     .controls {
         margin-top: 24px;
         flex-wrap: wrap;
+    }
+
+    .modal-dialog {
+        padding: 18px 14px 16px;
+        border-radius: 18px;
+    }
+
+    .modal-actions {
+        justify-content: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .modal-actions button {
+        width: 100%;
     }
 }
 

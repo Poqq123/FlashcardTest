@@ -91,7 +91,7 @@
                     </div>
                 </div>
 
-                <button id="save-btn" class="add-btn" onclick="addFlashcard()" aria-label="Add flashcard">+</button>
+                <button id="save-btn" class="add-btn" onclick="openAddCardModal()" aria-label="Add flashcard">+</button>
             </div>
 
             <div class="controls">
@@ -106,6 +106,27 @@
             </div>
             
             <p id="error-msg" class="error"></p>
+        </div>
+    </div>
+
+    <div id="add-card-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="add-card-title">
+            <button class="modal-close" type="button" onclick="closeAddCardModal()" aria-label="Close add card form">×</button>
+            <h2 id="add-card-title">Add New Flashcard</h2>
+            <p class="modal-subtitle">Collection: <span id="add-card-collection-name">All Collections</span></p>
+
+            <form id="add-card-form" class="modal-form">
+                <label for="modal-question">Question</label>
+                <textarea id="modal-question" name="question" rows="4" placeholder="Type your question..." required></textarea>
+
+                <label for="modal-answer">Answer</label>
+                <textarea id="modal-answer" name="answer" rows="4" placeholder="Type your answer..." required></textarea>
+
+                <div class="modal-actions">
+                    <button type="button" class="modal-cancel-btn" onclick="closeAddCardModal()">Cancel</button>
+                    <button type="submit" class="modal-save-btn">Save Card</button>
+                </div>
+            </form>
         </div>
     </div>
 

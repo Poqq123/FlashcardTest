@@ -14,6 +14,11 @@ const cardIndexDisplay = document.getElementById("card-index");
 const flashcardElement = document.getElementById("flashcard");
 const collectionSelect = document.getElementById("collection-select");
 const activeCollectionText = document.getElementById("active-collection");
+const addCardModal = document.getElementById("add-card-modal");
+const addCardForm = document.getElementById("add-card-form");
+const addCardQuestionInput = document.getElementById("modal-question");
+const addCardAnswerInput = document.getElementById("modal-answer");
+const addCardCollectionName = document.getElementById("add-card-collection-name");
 
 document.addEventListener("DOMContentLoaded", initializeApp);
 
@@ -68,9 +73,28 @@ function renderCollectionOptions() {
 }
 
 async function initializeApp() {
+    setupAddCardModal();
     renderCollectionOptions();
     await fetchCollections();
     await fetchFlashcards();
+}
+
+function setupAddCardModal() {
+    if (!addCardModal || !addCardForm) return;
+
+    addCardForm.addEventListener("submit", handleAddCardFormSubmit);
+
+    addCardModal.addEventListener("click", (event) => {
+        if (event.target === addCardModal) {
+            closeAddCardModal();
+        }
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && addCardModal.classList.contains("is-open")) {
+            closeAddCardModal();
+        }
+    });
 }
 
 async function fetchCollections() {
@@ -148,7 +172,7 @@ async function createCollection() {
 
         if (response.status === 401) {
             alert("Session expired. Please login again.");
-            return;
+            return false;
         }
 
         if (response.status === 409) {
@@ -222,22 +246,58 @@ async function fetchFlashcards() {
     }
 }
 
-async function addFlashcard() {
-    const question = prompt("Enter the question:");
-    if (question === null) return;
-    const answer = prompt("Enter the answer:");
-    if (answer === null) return;
+function openAddCardModal() {
+    if (!addCardModal || !addCardQuestionInput || !addCardAnswerInput) return;
 
-    const trimmedQuestion = question.trim();
-    const trimmedAnswer = answer.trim();
+    if (!hasValidToken()) {
+        alert("You must be logged in to add a card.");
+        return;
+    }
+
+    const selectedCollection = collections.find(
+        (collection) => String(collection.id) === String(activeCollection)
+    );
+    if (addCardCollectionName) {
+        addCardCollectionName.textContent = getCollectionDisplayName(selectedCollection);
+    }
+
+    addCardQuestionInput.value = "";
+    addCardAnswerInput.value = "";
+    addCardModal.classList.add("is-open");
+    addCardModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+    addCardQuestionInput.focus();
+}
+
+function closeAddCardModal() {
+    if (!addCardModal) return;
+    addCardModal.classList.remove("is-open");
+    addCardModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+}
+
+async function handleAddCardFormSubmit(event) {
+    event.preventDefault();
+    if (!addCardQuestionInput || !addCardAnswerInput) return;
+
+    const trimmedQuestion = addCardQuestionInput.value.trim();
+    const trimmedAnswer = addCardAnswerInput.value.trim();
+
     if (!trimmedQuestion || !trimmedAnswer) {
         alert("Please fill in both the Question and the Answer fields.");
         return;
     }
 
+    const saved = await saveFlashcard(trimmedQuestion, trimmedAnswer);
+    if (saved) {
+        closeAddCardModal();
+    }
+}
+
+async function saveFlashcard(question, answer) {
     if (!hasValidToken()) {
         alert("You must be logged in to add a card.");
-        return;
+        return false;
     }
 
     try {
@@ -245,8 +305,8 @@ async function addFlashcard() {
             method: "POST",
             headers: getHeaders(),
             body: JSON.stringify({
-                question: trimmedQuestion,
-                answer: trimmedAnswer,
+                question: question,
+                answer: answer,
                 collection_id: getSelectedCollectionId()
             })
         });
@@ -266,10 +326,16 @@ async function addFlashcard() {
             updateCardDisplay();
             playCardAnimation("pop");
         }, 100);
+        return true;
     } catch (error) {
         console.error("Error adding card:", error);
         alert("Failed to save card. Check console for details.");
+        return false;
     }
+}
+
+function addFlashcard() {
+    openAddCardModal();
 }
 
 async function deleteFlashcard() {
