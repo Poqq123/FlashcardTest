@@ -31,8 +31,12 @@
             localStorage.setItem("userToken", token); // Save the key!
 
             setTimeout(() => {
-                alert(`Welcome, ${result.user.displayName}`);
-                location.reload();
+                if (window.showWelcomeModal) {
+                    window.showWelcomeModal(result.user.displayName, () => location.reload());
+                } else {
+                    alert(`Welcome, ${result.user.displayName}`);
+                    location.reload();
+                }
             }, 500);
 
         } catch (error) {
@@ -111,7 +115,7 @@
 
     <div id="add-card-modal" class="modal-overlay" aria-hidden="true">
         <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="add-card-title">
-            <button class="modal-close" type="button" onclick="closeAddCardModal()" aria-label="Close add card form">×</button>
+            <button class="modal-close" type="button" data-close-modal="add-card-modal" aria-label="Close add card form">×</button>
             <h2 id="add-card-title">Add New Flashcard</h2>
             <p class="modal-subtitle">Collection: <span id="add-card-collection-name">All Collections</span></p>
 
@@ -121,12 +125,79 @@
 
                 <label for="modal-answer">Answer</label>
                 <textarea id="modal-answer" name="answer" rows="4" placeholder="Type your answer..." required></textarea>
+                <p id="add-card-error" class="modal-error" aria-live="polite"></p>
 
                 <div class="modal-actions">
-                    <button type="button" class="modal-cancel-btn" onclick="closeAddCardModal()">Cancel</button>
+                    <button type="button" class="modal-cancel-btn" data-close-modal="add-card-modal">Cancel</button>
                     <button type="submit" class="modal-save-btn">Save Card</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div id="collection-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="collection-modal-title">
+            <button class="modal-close" type="button" data-close-modal="collection-modal" aria-label="Close collection form">×</button>
+            <h2 id="collection-modal-title">Create Collection</h2>
+            <p class="modal-subtitle">Group cards by class, chapter, or exam topic.</p>
+
+            <form id="collection-form" class="modal-form">
+                <label for="collection-name-input">Collection Name</label>
+                <input id="collection-name-input" name="name" type="text" placeholder="Chapter 5 Review" required />
+
+                <label for="collection-class-input">Class Name (Optional)</label>
+                <input id="collection-class-input" name="class_name" type="text" placeholder="Physics 101" />
+                <p id="collection-error" class="modal-error" aria-live="polite"></p>
+
+                <div class="modal-actions">
+                    <button type="button" class="modal-cancel-btn" data-close-modal="collection-modal">Cancel</button>
+                    <button type="submit" class="modal-save-btn">Create Collection</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-card-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-card-title">
+            <button class="modal-close" type="button" data-close-modal="edit-card-modal" aria-label="Close edit card form">×</button>
+            <h2 id="edit-card-title">Edit Flashcard</h2>
+            <p class="modal-subtitle">Refine your card for better recall.</p>
+
+            <form id="edit-card-form" class="modal-form">
+                <label for="edit-question">Question</label>
+                <textarea id="edit-question" name="question" rows="4" required></textarea>
+
+                <label for="edit-answer">Answer</label>
+                <textarea id="edit-answer" name="answer" rows="4" required></textarea>
+                <p id="edit-card-error" class="modal-error" aria-live="polite"></p>
+
+                <div class="modal-actions">
+                    <button type="button" class="modal-cancel-btn" data-close-modal="edit-card-modal">Cancel</button>
+                    <button type="submit" class="modal-save-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-dialog modal-compact" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+            <button class="modal-close" type="button" data-close-modal="confirm-modal" aria-label="Close confirmation">×</button>
+            <h2 id="confirm-title">Please Confirm</h2>
+            <p id="confirm-message" class="modal-subtitle">Are you sure you want to continue?</p>
+            <div class="modal-actions">
+                <button type="button" class="modal-cancel-btn" data-close-modal="confirm-modal">Cancel</button>
+                <button id="confirm-action-btn" type="button" class="modal-save-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="welcome-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-dialog modal-compact modal-welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+            <h2 id="welcome-title">Welcome Back</h2>
+            <p class="modal-subtitle">You are signed in as <span id="welcome-user-name">Learner</span>.</p>
+            <div class="modal-actions modal-single-action">
+                <button id="welcome-continue-btn" type="button" class="modal-save-btn">Start Studying</button>
+            </div>
         </div>
     </div>
 

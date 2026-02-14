@@ -6,6 +6,9 @@ let flashcards = [];
 let collections = [];
 let currentIndex = 0;
 let activeCollection = "all";
+let editingCardId = null;
+let pendingConfirmAction = null;
+let pendingWelcomeContinue = null;
 
 const cardQuestion = document.getElementById("card-question");
 const cardAnswer = document.getElementById("card-answer");
@@ -14,11 +17,36 @@ const cardIndexDisplay = document.getElementById("card-index");
 const flashcardElement = document.getElementById("flashcard");
 const collectionSelect = document.getElementById("collection-select");
 const activeCollectionText = document.getElementById("active-collection");
+
 const addCardModal = document.getElementById("add-card-modal");
 const addCardForm = document.getElementById("add-card-form");
 const addCardQuestionInput = document.getElementById("modal-question");
 const addCardAnswerInput = document.getElementById("modal-answer");
 const addCardCollectionName = document.getElementById("add-card-collection-name");
+const addCardError = document.getElementById("add-card-error");
+
+const collectionModal = document.getElementById("collection-modal");
+const collectionForm = document.getElementById("collection-form");
+const collectionNameInput = document.getElementById("collection-name-input");
+const collectionClassInput = document.getElementById("collection-class-input");
+const collectionError = document.getElementById("collection-error");
+
+const editCardModal = document.getElementById("edit-card-modal");
+const editCardForm = document.getElementById("edit-card-form");
+const editQuestionInput = document.getElementById("edit-question");
+const editAnswerInput = document.getElementById("edit-answer");
+const editCardError = document.getElementById("edit-card-error");
+
+const confirmModal = document.getElementById("confirm-modal");
+const confirmTitle = document.getElementById("confirm-title");
+const confirmMessage = document.getElementById("confirm-message");
+const confirmActionButton = document.getElementById("confirm-action-btn");
+
+const welcomeModal = document.getElementById("welcome-modal");
+const welcomeUserName = document.getElementById("welcome-user-name");
+const welcomeContinueBtn = document.getElementById("welcome-continue-btn");
+
+const modalOverlays = Array.from(document.querySelectorAll(".modal-overlay"));
 
 document.addEventListener("DOMContentLoaded", initializeApp);
 
@@ -47,6 +75,89 @@ function getCollectionDisplayName(collection) {
     return collection.name;
 }
 
+function setModalError(element, message = "") {
+    if (element) element.textContent = message;
+}
+
+function openModal(overlay) {
+    if (!overlay) return;
+    overlay.classList.add("is-open");
+    overlay.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+}
+
+function closeModal(overlay) {
+    if (!overlay) return;
+    overlay.classList.remove("is-open");
+    overlay.setAttribute("aria-hidden", "true");
+
+    const hasOpenModal = modalOverlays.some((modal) => modal.classList.contains("is-open"));
+    if (!hasOpenModal) {
+        document.body.classList.remove("modal-open");
+    }
+}
+
+function closeModalById(modalId) {
+    const overlay = document.getElementById(modalId);
+    if (!overlay) return;
+
+    if (modalId === "add-card-modal") {
+        setModalError(addCardError);
+    }
+
+    if (modalId === "collection-modal") {
+        setModalError(collectionError);
+    }
+
+    if (modalId === "edit-card-modal") {
+        editingCardId = null;
+        setModalError(editCardError);
+    }
+
+    if (modalId === "confirm-modal") {
+        pendingConfirmAction = null;
+        if (confirmActionButton) {
+            confirmActionButton.classList.remove("modal-danger-btn");
+            confirmActionButton.textContent = "Confirm";
+            confirmActionButton.disabled = false;
+        }
+    }
+
+    if (modalId === "welcome-modal") {
+        const callback = pendingWelcomeContinue;
+        pendingWelcomeContinue = null;
+        closeModal(overlay);
+        if (typeof callback === "function") callback();
+        return;
+    }
+
+    closeModal(overlay);
+}
+
+function setupModalInfrastructure() {
+    modalOverlays.forEach((overlay) => {
+        overlay.addEventListener("click", (event) => {
+            if (event.target === overlay) {
+                closeModalById(overlay.id);
+            }
+        });
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        const openOverlays = modalOverlays.filter((overlay) => overlay.classList.contains("is-open"));
+        if (!openOverlays.length) return;
+        closeModalById(openOverlays[openOverlays.length - 1].id);
+    });
+
+    document.querySelectorAll("[data-close-modal]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const modalId = button.getAttribute("data-close-modal");
+            if (modalId) closeModalById(modalId);
+        });
+    });
+}
+
 function updateActiveCollectionLabel() {
     if (!activeCollectionText) return;
     if (activeCollection === "all") {
@@ -63,9 +174,7 @@ function renderCollectionOptions() {
 
     const options = ['<option value="all">All Collections</option>'];
     for (const collection of collections) {
-        options.push(
-            `<option value="${collection.id}">${getCollectionDisplayName(collection)}</option>`
-        );
+        options.push(`<option value="${collection.id}">${getCollectionDisplayName(collection)}</option>`);
     }
     collectionSelect.innerHTML = options.join("");
     collectionSelect.value = activeCollection;
@@ -73,28 +182,64 @@ function renderCollectionOptions() {
 }
 
 async function initializeApp() {
+    setupModalInfrastructure();
     setupAddCardModal();
+    setupCollectionModal();
+    setupEditCardModal();
+    setupConfirmModal();
+    setupWelcomeModal();
     renderCollectionOptions();
     await fetchCollections();
     await fetchFlashcards();
 }
 
 function setupAddCardModal() {
-    if (!addCardModal || !addCardForm) return;
-
+    if (!addCardForm) return;
     addCardForm.addEventListener("submit", handleAddCardFormSubmit);
+}
 
-    addCardModal.addEventListener("click", (event) => {
-        if (event.target === addCardModal) {
-            closeAddCardModal();
+function setupCollectionModal() {
+    if (!collectionForm) return;
+    collectionForm.addEventListener("submit", handleCollectionFormSubmit);
+}
+
+function setupEditCardModal() {
+    if (!editCardForm) return;
+    editCardForm.addEventListener("submit", handleEditCardFormSubmit);
+}
+
+function setupConfirmModal() {
+    if (!confirmActionButton) return;
+
+    confirmActionButton.addEventListener("click", async () => {
+        const action = pendingConfirmAction;
+        pendingConfirmAction = null;
+
+        closeModalById("confirm-modal");
+        if (typeof action === "function") {
+            await action();
         }
     });
+}
 
-    document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && addCardModal.classList.contains("is-open")) {
-            closeAddCardModal();
+function setupWelcomeModal() {
+    if (welcomeContinueBtn) {
+        welcomeContinueBtn.addEventListener("click", () => {
+            closeModalById("welcome-modal");
+        });
+    }
+
+    window.showWelcomeModal = (displayName, onContinue) => {
+        if (!welcomeModal || !welcomeUserName) {
+            alert(`Welcome, ${displayName || "Learner"}`);
+            if (typeof onContinue === "function") onContinue();
+            return;
         }
-    });
+
+        welcomeUserName.textContent = displayName || "Learner";
+        pendingWelcomeContinue = typeof onContinue === "function" ? onContinue : null;
+        openModal(welcomeModal);
+    };
 }
 
 async function fetchCollections() {
@@ -140,21 +285,33 @@ async function fetchCollections() {
     }
 }
 
-async function createCollection() {
+function createCollection() {
+    openCollectionModal();
+}
+
+function openCollectionModal() {
+    if (!collectionModal || !collectionNameInput || !collectionClassInput) return;
     if (!hasValidToken()) {
         alert("You must be logged in to create a collection.");
         return;
     }
 
-    const nameInput = prompt("Collection name (example: Chapter 1):");
-    if (nameInput === null) return;
-    const classInput = prompt("Class name (optional, example: Biology 101):");
+    collectionNameInput.value = "";
+    collectionClassInput.value = "";
+    setModalError(collectionError);
+    openModal(collectionModal);
+    collectionNameInput.focus();
+}
 
-    const name = nameInput.trim();
-    const className = classInput ? classInput.trim() : "";
+async function handleCollectionFormSubmit(event) {
+    event.preventDefault();
+    if (!collectionNameInput || !collectionClassInput) return;
+
+    const name = collectionNameInput.value.trim();
+    const className = collectionClassInput.value.trim();
 
     if (!name) {
-        alert("Collection name cannot be empty.");
+        setModalError(collectionError, "Collection name cannot be empty.");
         return;
     }
 
@@ -171,12 +328,12 @@ async function createCollection() {
         const payload = await response.json().catch(() => ({}));
 
         if (response.status === 401) {
-            alert("Session expired. Please login again.");
-            return false;
+            setModalError(collectionError, "Session expired. Please login again.");
+            return;
         }
 
         if (response.status === 409) {
-            alert(payload.detail || "That collection already exists.");
+            setModalError(collectionError, payload.detail || "That collection already exists.");
             return;
         }
 
@@ -185,11 +342,12 @@ async function createCollection() {
         }
 
         activeCollection = String(payload.id);
+        closeModalById("collection-modal");
         await fetchCollections();
         await fetchFlashcards();
     } catch (error) {
         console.error("Failed to create collection:", error);
-        alert("Could not create collection.");
+        setModalError(collectionError, "Could not create collection right now.");
     }
 }
 
@@ -263,40 +421,40 @@ function openAddCardModal() {
 
     addCardQuestionInput.value = "";
     addCardAnswerInput.value = "";
-    addCardModal.classList.add("is-open");
-    addCardModal.setAttribute("aria-hidden", "false");
-    document.body.classList.add("modal-open");
+    setModalError(addCardError);
+    openModal(addCardModal);
     addCardQuestionInput.focus();
 }
 
 function closeAddCardModal() {
-    if (!addCardModal) return;
-    addCardModal.classList.remove("is-open");
-    addCardModal.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("modal-open");
+    closeModalById("add-card-modal");
 }
 
 async function handleAddCardFormSubmit(event) {
     event.preventDefault();
     if (!addCardQuestionInput || !addCardAnswerInput) return;
 
-    const trimmedQuestion = addCardQuestionInput.value.trim();
-    const trimmedAnswer = addCardAnswerInput.value.trim();
+    const question = addCardQuestionInput.value.trim();
+    const answer = addCardAnswerInput.value.trim();
 
-    if (!trimmedQuestion || !trimmedAnswer) {
-        alert("Please fill in both the Question and the Answer fields.");
+    if (!question || !answer) {
+        setModalError(addCardError, "Please fill in both the Question and the Answer fields.");
         return;
     }
 
-    const saved = await saveFlashcard(trimmedQuestion, trimmedAnswer);
+    const saved = await saveFlashcard(question, answer, addCardError);
     if (saved) {
-        closeAddCardModal();
+        closeModalById("add-card-modal");
     }
 }
 
-async function saveFlashcard(question, answer) {
+async function saveFlashcard(question, answer, errorElement = null) {
     if (!hasValidToken()) {
-        alert("You must be logged in to add a card.");
+        if (errorElement) {
+            setModalError(errorElement, "You must be logged in to add a card.");
+        } else {
+            alert("You must be logged in to add a card.");
+        }
         return false;
     }
 
@@ -312,8 +470,8 @@ async function saveFlashcard(question, answer) {
         });
 
         if (response.status === 401) {
-            alert("Session expired. Please login again.");
-            return;
+            setModalError(errorElement, "Session expired. Please login again.");
+            return false;
         }
 
         if (!response.ok) {
@@ -329,7 +487,11 @@ async function saveFlashcard(question, answer) {
         return true;
     } catch (error) {
         console.error("Error adding card:", error);
-        alert("Failed to save card. Check console for details.");
+        if (errorElement) {
+            setModalError(errorElement, "Failed to save card. Please try again.");
+        } else {
+            alert("Failed to save card. Check console for details.");
+        }
         return false;
     }
 }
@@ -338,25 +500,114 @@ function addFlashcard() {
     openAddCardModal();
 }
 
+function showConfirmModal({ title, message, confirmText, danger, onConfirm }) {
+    if (!confirmModal || !confirmTitle || !confirmMessage || !confirmActionButton) {
+        if (confirm(message || "Are you sure?") && typeof onConfirm === "function") {
+            onConfirm();
+        }
+        return;
+    }
+
+    confirmTitle.textContent = title || "Please Confirm";
+    confirmMessage.textContent = message || "Are you sure you want to continue?";
+    confirmActionButton.textContent = confirmText || "Confirm";
+    confirmActionButton.classList.toggle("modal-danger-btn", Boolean(danger));
+    confirmActionButton.disabled = false;
+    pendingConfirmAction = onConfirm;
+    openModal(confirmModal);
+}
+
 async function deleteFlashcard() {
     if (flashcards.length === 0) return;
-    const id = flashcards[currentIndex].id;
-
     if (!hasValidToken()) {
         alert("You must be logged in to delete cards.");
         return;
     }
 
-    if (!confirm("Are you sure you want to delete this card?")) return;
+    const currentCard = flashcards[currentIndex];
+    showConfirmModal({
+        title: "Delete this flashcard?",
+        message: "This action will permanently remove the current card.",
+        confirmText: "Delete Card",
+        danger: true,
+        onConfirm: async () => {
+            try {
+                const response = await fetch(`${API_URL}/cards/${currentCard.id}`, {
+                    method: "DELETE",
+                    headers: getHeaders()
+                });
+
+                if (response.status === 401) {
+                    alert("Session expired. Please login again.");
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                playCardAnimation("pop-out");
+                await wait(350);
+                await fetchFlashcards();
+
+                if (currentIndex >= flashcards.length) {
+                    currentIndex = Math.max(0, flashcards.length - 1);
+                }
+                updateCardDisplay();
+            } catch (error) {
+                console.error("Delete failed:", error);
+                alert("Failed to delete card.");
+            }
+        }
+    });
+}
+
+function editFlashcard() {
+    if (flashcards.length === 0) return;
+    if (!hasValidToken()) {
+        alert("You must be logged in to edit cards.");
+        return;
+    }
+
+    const card = flashcards[currentIndex];
+    if (!editCardModal || !editQuestionInput || !editAnswerInput) return;
+
+    editingCardId = card.id;
+    editQuestionInput.value = card.question || "";
+    editAnswerInput.value = card.answer || "";
+    setModalError(editCardError);
+    openModal(editCardModal);
+    editQuestionInput.focus();
+}
+
+async function handleEditCardFormSubmit(event) {
+    event.preventDefault();
+    if (!editQuestionInput || !editAnswerInput || editingCardId === null) return;
+
+    const question = editQuestionInput.value.trim();
+    const answer = editAnswerInput.value.trim();
+
+    if (!question || !answer) {
+        setModalError(editCardError, "Please fill in both fields.");
+        return;
+    }
+
+    const targetCard = flashcards.find((card) => card.id === editingCardId);
+    const collectionId = targetCard ? (targetCard.collection_id ?? null) : null;
 
     try {
-        const response = await fetch(`${API_URL}/cards/${id}`, {
-            method: "DELETE",
-            headers: getHeaders()
+        const response = await fetch(`${API_URL}/cards/${editingCardId}`, {
+            method: "PUT",
+            headers: getHeaders(),
+            body: JSON.stringify({
+                question: question,
+                answer: answer,
+                collection_id: collectionId
+            })
         });
 
         if (response.status === 401) {
-            alert("Session expired. Please login again.");
+            setModalError(editCardError, "Session expired. Please login again.");
             return;
         }
 
@@ -364,58 +615,11 @@ async function deleteFlashcard() {
             throw new Error(`Server error: ${response.status}`);
         }
 
-        playCardAnimation("pop-out");
-        await wait(350);
+        closeModalById("edit-card-modal");
         await fetchFlashcards();
-
-        if (currentIndex >= flashcards.length) {
-            currentIndex = Math.max(0, flashcards.length - 1);
-        }
-        updateCardDisplay();
     } catch (error) {
-        console.error("Delete failed:", error);
-        alert("Failed to delete card.");
-    }
-}
-
-async function editFlashcard() {
-    if (flashcards.length === 0) return;
-
-    if (!hasValidToken()) {
-        alert("You must be logged in to edit cards.");
-        return;
-    }
-
-    const card = flashcards[currentIndex];
-    const newQ = prompt("New Question:", card.question);
-    const newA = prompt("New Answer:", card.answer);
-
-    if (newQ && newA) {
-        try {
-            const response = await fetch(`${API_URL}/cards/${card.id}`, {
-                method: "PUT",
-                headers: getHeaders(),
-                body: JSON.stringify({
-                    question: newQ.trim(),
-                    answer: newA.trim(),
-                    collection_id: card.collection_id ?? null
-                })
-            });
-
-            if (response.status === 401) {
-                alert("Session expired. Please login again.");
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
-            }
-
-            await fetchFlashcards();
-        } catch (error) {
-            console.error("Edit failed:", error);
-            alert("Failed to update card.");
-        }
+        console.error("Edit failed:", error);
+        setModalError(editCardError, "Failed to update card. Please try again.");
     }
 }
 

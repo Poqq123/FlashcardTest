@@ -390,6 +390,11 @@ button:active {
     font-size: 0.92rem;
 }
 
+.modal-subtitle span {
+    font-weight: 700;
+    color: #3f372f;
+}
+
 .modal-form {
     display: flex;
     flex-direction: column;
@@ -403,26 +408,43 @@ button:active {
     color: #4e463f;
 }
 
-.modal-form textarea {
+.modal-form textarea,
+.modal-form input {
     width: 100%;
-    resize: vertical;
-    min-height: 96px;
-    max-height: 220px;
     border-radius: 13px;
     border: 1px solid rgba(95, 86, 76, 0.26);
     background: rgba(255, 255, 255, 0.95);
     color: var(--ink-1);
     font: inherit;
-    line-height: 1.45;
     padding: 11px 13px;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.modal-form textarea:focus {
+.modal-form textarea {
+    resize: vertical;
+    min-height: 96px;
+    max-height: 220px;
+    line-height: 1.45;
+}
+
+.modal-form input {
+    min-height: 46px;
+}
+
+.modal-form textarea:focus,
+.modal-form input:focus {
     outline: none;
     border-color: rgba(15, 76, 92, 0.6);
     box-shadow: 0 0 0 4px rgba(15, 76, 92, 0.14);
     transform: translateY(-1px);
+}
+
+.modal-error {
+    min-height: 1.1em;
+    margin: 2px 0 0;
+    color: #a63e27;
+    font-size: 0.84rem;
+    font-weight: 600;
 }
 
 .modal-actions {
@@ -438,6 +460,27 @@ button:active {
 
 .modal-save-btn {
     background: linear-gradient(160deg, #0f4c5c, #0a3f4e);
+}
+
+.modal-danger-btn {
+    background: linear-gradient(160deg, #bf5038, #a63e27);
+}
+
+.modal-compact {
+    width: min(460px, 100%);
+}
+
+.modal-welcome {
+    text-align: center;
+    background: linear-gradient(155deg, rgba(255, 251, 242, 0.98), rgba(243, 233, 217, 0.95));
+}
+
+.modal-welcome h2 {
+    margin-top: 0;
+}
+
+.modal-single-action {
+    justify-content: center;
 }
 
 .flashcard.slide-left {
@@ -523,6 +566,11 @@ button:active {
 
     .modal-actions button {
         width: 100%;
+    }
+
+    .modal-single-action {
+        flex-direction: column;
+        justify-content: stretch;
     }
 }
 
