@@ -129,3 +129,11 @@ uvicorn main:app --reload
 ```
 
 Then open `index.html` through your static host or local web server.
+
+## Future Improvements Planned
+- Add collection editing (rename, change class name)
+- Generate practice quizzes based on collections
+- Add collection sharing between users (requires more complex permissions)
+- Allow bulk card import/export by collection 
+- Add collection color coding for easier UI differentiation
+- Add dark mode support for better accessibility
