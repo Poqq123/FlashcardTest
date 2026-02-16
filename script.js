@@ -50,6 +50,17 @@ const modalOverlays = Array.from(document.querySelectorAll(".modal-overlay"));
 
 document.addEventListener("DOMContentLoaded", initializeApp);
 
+async function waitForAuthBootstrap() {
+    const authReady = window.authReady;
+    if (authReady && typeof authReady.then === "function") {
+        try {
+            await authReady;
+        } catch (error) {
+            console.error("Auth bootstrap failed:", error);
+        }
+    }
+}
+
 function getHeaders() {
     const token = localStorage.getItem("userToken");
     return {
@@ -182,6 +193,7 @@ function renderCollectionOptions() {
 }
 
 async function initializeApp() {
+    await waitForAuthBootstrap();
     setupModalInfrastructure();
     setupAddCardModal();
     setupCollectionModal();
@@ -240,6 +252,11 @@ function setupWelcomeModal() {
         pendingWelcomeContinue = typeof onContinue === "function" ? onContinue : null;
         openModal(welcomeModal);
     };
+
+    if (window.pendingWelcomeUserName) {
+        window.showWelcomeModal(window.pendingWelcomeUserName);
+        window.pendingWelcomeUserName = null;
+    }
 }
 
 async function fetchCollections() {

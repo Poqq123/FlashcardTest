@@ -1,10 +1,12 @@
 # main.py
+import os
 from typing import Optional
 
-import firebase_admin
+import jwt
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from firebase_admin import auth, credentials
+from jwt import InvalidTokenError, PyJWKClient
+from jwt.exceptions import PyJWKClientError
 from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String, create_engine, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
@@ -14,9 +16,11 @@ from sqlalchemy.orm import Session, sessionmaker
 # 1. DATABASE SETUP (Supabase)
 # ==========================================
 
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres.sfxtsemiitbruxmdurva:3vnfynax2026@aws-0-us-west-2.pooler.supabase.com:6543/postgres"
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is required")
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -67,16 +71,53 @@ ensure_schema()
 
 
 # ==========================================
-# 2. FIREBASE AUTH SETUP (The Gatekeeper)
+# 2. SUPABASE AUTH SETUP (The Gatekeeper)
 # ==========================================
 
-if not firebase_admin._apps:
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+SUPABASE_JWT_ISSUER = os.getenv("SUPABASE_JWT_ISSUER", f"{SUPABASE_URL}/auth/v1" if SUPABASE_URL else "")
+SUPABASE_JWKS_CLIENT = (
+    PyJWKClient(f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json") if SUPABASE_URL else None
+)
+
+
+def decode_supabase_token(token: str) -> dict:
     try:
-        cred = credentials.Certificate("service-account.json")
-        firebase_admin.initialize_app(cred)
-        print("Firebase Admin Initialized Successfully")
-    except Exception as exc:
-        print(f"Error loading service-account.json: {exc}")
+        header = jwt.get_unverified_header(token)
+        algorithm = header.get("alg")
+        if not algorithm:
+            raise HTTPException(status_code=401, detail="Invalid token header")
+
+        decode_kwargs = {
+            "algorithms": [algorithm],
+            "options": {"verify_aud": False},
+        }
+        if SUPABASE_JWT_ISSUER:
+            decode_kwargs["issuer"] = SUPABASE_JWT_ISSUER
+
+        if algorithm.startswith("HS"):
+            if not SUPABASE_JWT_SECRET:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Server auth misconfigured: missing SUPABASE_JWT_SECRET",
+                )
+            return jwt.decode(token, SUPABASE_JWT_SECRET, **decode_kwargs)
+
+        if SUPABASE_JWKS_CLIENT is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Server auth misconfigured: missing SUPABASE_URL",
+            )
+
+        signing_key = SUPABASE_JWKS_CLIENT.get_signing_key_from_jwt(token)
+        return jwt.decode(token, signing_key.key, **decode_kwargs)
+    except HTTPException:
+        raise
+    except (InvalidTokenError, PyJWKClientError):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
 def get_current_user(authorization: str = Header(None)) -> str:
@@ -88,8 +129,13 @@ def get_current_user(authorization: str = Header(None)) -> str:
         if len(parts) != 2 or parts[0].lower() != "bearer":
             raise ValueError("Malformed authorization header")
 
-        decoded_token = auth.verify_id_token(parts[1])
-        return decoded_token["uid"]
+        decoded_token = decode_supabase_token(parts[1])
+        user_id = decoded_token.get("sub")
+        if not user_id:
+            raise ValueError("Token is missing subject")
+        return user_id
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 

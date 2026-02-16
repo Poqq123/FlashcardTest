@@ -37,7 +37,7 @@ This avoids dropping tables for existing deployments.
 
 ## API Documentation
 
-All endpoints below require Firebase bearer token in `Authorization` header.
+All endpoints below require a Supabase bearer token in `Authorization` header.
 
 ### Health
 - `GET /`
@@ -117,15 +117,24 @@ Behavior:
 To ship this feature:
 1. Redeploy backend service on Render (required).
 2. Deploy updated frontend (GitHub Pages or your host) (required for UI feature).
-3. No Firebase auth config change is required.
-4. Supabase does not require a separate app redeploy, but DB schema must include new fields/tables (handled by backend startup guard here).
+3. Set Supabase auth config on frontend in `/Users/GeneralUse/LinuxHome/FlashcardTest/index.html`:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+4. Set backend auth environment variables:
+   - `DATABASE_URL`
+   - `SUPABASE_URL`
+   - `SUPABASE_JWT_SECRET` (required when your project signs auth JWTs with HS256)
+   - `SUPABASE_JWT_ISSUER` (optional override, defaults to `${SUPABASE_URL}/auth/v1`)
+5. Supabase does not require a separate app redeploy, but DB schema must include new fields/tables (handled by backend startup guard here).
 
 ## Local Run (example)
 
 From project root:
 
 ```bash
-uvicorn main:app --reload
+cp .env.example .env
+# fill values in .env
+uvicorn main:app --reload --env-file .env
 ```
 
 Then open `index.html` through your static host or local web server.
