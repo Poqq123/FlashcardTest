@@ -127,6 +127,11 @@ To ship this feature:
    - `SUPABASE_JWT_ISSUER` (optional override, defaults to `${SUPABASE_URL}/auth/v1`)
 5. Supabase does not require a separate app redeploy, but DB schema must include new fields/tables (handled by backend startup guard here).
 
+`DATABASE_URL` note:
+- On Render, use Supabase **Connection pooling** URL (host like `aws-0-<region>.pooler.supabase.com`, port `6543`).
+- Do not use direct host `db.<project-ref>.supabase.co` on platforms without IPv6 egress.
+- Include `?sslmode=require` in the URL.
+
 ## Local Run (example)
 
 From project root:
