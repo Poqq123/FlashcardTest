@@ -144,14 +144,30 @@ body::after {
     color: var(--ink-2);
 }
 
+.collection-select-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .collection-controls select {
     min-width: 210px;
     padding: 10px 12px;
     border-radius: 12px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--collection-soft);
     background: rgba(255, 255, 255, 0.92);
     color: var(--ink-1);
     font: inherit;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.collection-color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    border: 1px solid rgba(95, 86, 76, 0.28);
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+    background: var(--collection-color);
 }
 
 .active-collection {
@@ -259,6 +275,27 @@ button:active {
 
 .collection-btn {
     background: linear-gradient(160deg, #9b6a21, #82571b);
+}
+
+.collection-edit-btn {
+    background: linear-gradient(160deg, #466a87, #35566f);
+}
+
+.collection-delete-btn {
+    background: linear-gradient(160deg, #b5533d, #97412e);
+}
+
+#edit-collection-btn:disabled,
+#delete-collection-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    filter: grayscale(0.2);
+    box-shadow: none;
+}
+
+#edit-collection-btn:disabled:hover,
+#delete-collection-btn:disabled:hover {
+    transform: none;
 }
 
 .controls {

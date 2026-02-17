@@ -8,6 +8,7 @@ let collections = [];
 let currentIndex = 0;
 let activeCollection = "all";
 let editingCardId = null;
+let editingCollectionId = null;
 let pendingConfirmAction = null;
 let pendingWelcomeContinue = null;
 
@@ -18,6 +19,9 @@ const cardIndexDisplay = document.getElementById("card-index");
 const flashcardElement = document.getElementById("flashcard");
 const collectionSelect = document.getElementById("collection-select");
 const activeCollectionText = document.getElementById("active-collection");
+const collectionColorSwatch = document.getElementById("collection-color-swatch");
+const editCollectionButton = document.getElementById("edit-collection-btn");
+const deleteCollectionButton = document.getElementById("delete-collection-btn");
 
 const addCardModal = document.getElementById("add-card-modal");
 const addCardForm = document.getElementById("add-card-form");
@@ -27,6 +31,9 @@ const addCardCollectionName = document.getElementById("add-card-collection-name"
 const addCardError = document.getElementById("add-card-error");
 
 const collectionModal = document.getElementById("collection-modal");
+const collectionModalTitle = document.getElementById("collection-modal-title");
+const collectionModalSubtitle = document.getElementById("collection-modal-subtitle");
+const collectionSubmitButton = document.getElementById("collection-submit-btn");
 const collectionForm = document.getElementById("collection-form");
 const collectionNameInput = document.getElementById("collection-name-input");
 const collectionClassInput = document.getElementById("collection-class-input");
@@ -141,6 +148,11 @@ function normalizeCollectionPayload(collection) {
     };
 }
 
+function getActiveCollection() {
+    if (activeCollection === "all") return null;
+    return collections.find((collection) => String(collection.id) === String(activeCollection)) || null;
+}
+
 function setModalError(element, message = "") {
     if (element) element.textContent = message;
 }
@@ -172,7 +184,17 @@ function closeModalById(modalId) {
     }
 
     if (modalId === "collection-modal") {
+        editingCollectionId = null;
         setModalError(collectionError);
+        if (collectionModalTitle) {
+            collectionModalTitle.textContent = "Create Collection";
+        }
+        if (collectionModalSubtitle) {
+            collectionModalSubtitle.textContent = "Group cards by class, chapter, or exam topic.";
+        }
+        if (collectionSubmitButton) {
+            collectionSubmitButton.textContent = "Create Collection";
+        }
     }
 
     if (modalId === "edit-card-modal") {
@@ -229,22 +251,63 @@ function updateActiveCollectionLabel() {
     if (activeCollection === "all") {
         activeCollectionText.textContent = "Showing: All Collections";
         applyCollectionTheme(DEFAULT_COLLECTION_COLOR);
+        if (collectionSelect) {
+            collectionSelect.style.color = shiftHexColor(DEFAULT_COLLECTION_COLOR, -0.35);
+            collectionSelect.style.background = `linear-gradient(145deg, ${toRgba(DEFAULT_COLLECTION_COLOR, 0.14)}, rgba(255, 255, 255, 0.95))`;
+        }
+        if (collectionColorSwatch) {
+            collectionColorSwatch.style.background = DEFAULT_COLLECTION_COLOR;
+            collectionColorSwatch.title = `All Collections color preview (${DEFAULT_COLLECTION_COLOR})`;
+        }
+        updateCollectionActionButtons(null);
         return;
     }
 
-    const selected = collections.find((collection) => String(collection.id) === String(activeCollection));
+    const selected = getActiveCollection();
     activeCollectionText.textContent = `Showing: ${getCollectionDisplayName(selected)}`;
-    applyCollectionTheme(selected?.color || DEFAULT_COLLECTION_COLOR);
+    const previewColor = selected?.color || DEFAULT_COLLECTION_COLOR;
+    applyCollectionTheme(previewColor);
+    if (collectionSelect) {
+        collectionSelect.style.color = shiftHexColor(previewColor, -0.35);
+        collectionSelect.style.background = `linear-gradient(145deg, ${toRgba(previewColor, 0.2)}, rgba(255, 255, 255, 0.95))`;
+    }
+    if (collectionColorSwatch) {
+        collectionColorSwatch.style.background = previewColor;
+        collectionColorSwatch.title = `Selected collection color (${previewColor})`;
+    }
+    updateCollectionActionButtons(selected);
+}
+
+function updateCollectionActionButtons(selectedCollection) {
+    const disabled = !hasValidToken() || !selectedCollection;
+    if (editCollectionButton) editCollectionButton.disabled = disabled;
+    if (deleteCollectionButton) deleteCollectionButton.disabled = disabled;
 }
 
 function renderCollectionOptions() {
     if (!collectionSelect) return;
+    collectionSelect.innerHTML = "";
 
-    const options = ['<option value="all">All Collections</option>'];
+    const allOption = document.createElement("option");
+    allOption.value = "all";
+    allOption.textContent = "All Collections";
+    collectionSelect.appendChild(allOption);
+
     for (const collection of collections) {
-        options.push(`<option value="${collection.id}">${getCollectionDisplayName(collection)}</option>`);
+        const option = document.createElement("option");
+        const collectionColor = sanitizeCollectionColor(collection.color);
+        option.value = String(collection.id);
+        option.textContent = `● ${getCollectionDisplayName(collection)} (${collectionColor})`;
+        option.style.color = collectionColor;
+        option.style.backgroundColor = toRgba(collectionColor, 0.08);
+        collectionSelect.appendChild(option);
     }
-    collectionSelect.innerHTML = options.join("");
+
+    const optionExists = Array.from(collectionSelect.options).some((option) => option.value === String(activeCollection));
+    if (!optionExists) {
+        activeCollection = "all";
+    }
+
     collectionSelect.value = activeCollection;
     updateActiveCollectionLabel();
 }
@@ -387,21 +450,46 @@ async function fetchCollections() {
 }
 
 function createCollection() {
-    openCollectionModal();
+    openCollectionModal("create");
 }
 
-function openCollectionModal() {
+function openEditCollectionModal() {
+    const selectedCollection = getActiveCollection();
+    if (!selectedCollection) {
+        showNoticeModal("Select a Collection", "Please select a collection to edit.");
+        return;
+    }
+    openCollectionModal("edit", selectedCollection);
+}
+
+function openCollectionModal(mode = "create", selectedCollection = null) {
     if (!collectionModal || !collectionNameInput || !collectionClassInput || !collectionColorInput) return;
     if (!hasValidToken()) {
         showNoticeModal("Sign In Required", "You must be logged in to add a collection.");
         return;
     }
 
-    collectionNameInput.value = "";
-    collectionClassInput.value = "";
-    collectionColorInput.value = DEFAULT_COLLECTION_COLOR.toLowerCase();
+    const isEditMode = mode === "edit" && selectedCollection;
+    editingCollectionId = isEditMode ? selectedCollection.id : null;
+
+    collectionNameInput.value = isEditMode ? (selectedCollection.name || "") : "";
+    collectionClassInput.value = isEditMode ? (selectedCollection.class_name || "") : "";
+    collectionColorInput.value = sanitizeCollectionColor(
+        isEditMode ? selectedCollection.color : DEFAULT_COLLECTION_COLOR
+    ).toLowerCase();
     if (collectionColorValue) {
-        collectionColorValue.textContent = DEFAULT_COLLECTION_COLOR;
+        collectionColorValue.textContent = sanitizeCollectionColor(collectionColorInput.value);
+    }
+    if (collectionModalTitle) {
+        collectionModalTitle.textContent = isEditMode ? "Edit Collection" : "Create Collection";
+    }
+    if (collectionModalSubtitle) {
+        collectionModalSubtitle.textContent = isEditMode
+            ? "Rename or recolor this collection."
+            : "Group cards by class, chapter, or exam topic.";
+    }
+    if (collectionSubmitButton) {
+        collectionSubmitButton.textContent = isEditMode ? "Save Collection" : "Create Collection";
     }
     setModalError(collectionError);
     openModal(collectionModal);
@@ -422,8 +510,12 @@ async function handleCollectionFormSubmit(event) {
     }
 
     try {
-        const response = await fetch(`${API_URL}/collections`, {
-            method: "POST",
+        const isEditMode = editingCollectionId !== null;
+        const endpoint = isEditMode
+            ? `${API_URL}/collections/${editingCollectionId}`
+            : `${API_URL}/collections`;
+        const response = await fetch(endpoint, {
+            method: isEditMode ? "PUT" : "POST",
             headers: getHeaders(),
             body: JSON.stringify({
                 name: name,
@@ -448,7 +540,7 @@ async function handleCollectionFormSubmit(event) {
             throw new Error(`Server error: ${response.status}`);
         }
 
-        activeCollection = String(payload.id);
+        activeCollection = String(payload.id || editingCollectionId);
         closeModalById("collection-modal");
         await fetchCollections();
         await fetchFlashcards();
@@ -456,6 +548,50 @@ async function handleCollectionFormSubmit(event) {
         console.error("Failed to create collection:", error);
         setModalError(collectionError, "Could not create collection right now.");
     }
+}
+
+async function deleteCollection() {
+    const selectedCollection = getActiveCollection();
+    if (!selectedCollection) {
+        showNoticeModal("Select a Collection", "Please select a collection to delete.");
+        return;
+    }
+
+    if (!hasValidToken()) {
+        showNoticeModal("Sign In Required", "You must be logged in to delete a collection.");
+        return;
+    }
+
+    showConfirmModal({
+        title: "Delete this collection?",
+        message: `Cards will remain but become uncategorized. Collection: ${getCollectionDisplayName(selectedCollection)}.`,
+        confirmText: "Delete Collection",
+        danger: true,
+        onConfirm: async () => {
+            try {
+                const response = await fetch(`${API_URL}/collections/${selectedCollection.id}`, {
+                    method: "DELETE",
+                    headers: getHeaders()
+                });
+
+                if (response.status === 401) {
+                    showNoticeModal("Session Expired", "Please login again.");
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                activeCollection = "all";
+                await fetchCollections();
+                await fetchFlashcards();
+            } catch (error) {
+                console.error("Delete collection failed:", error);
+                showNoticeModal("Delete Failed", "Could not delete this collection right now.");
+            }
+        }
+    });
 }
 
 function onCollectionChange() {

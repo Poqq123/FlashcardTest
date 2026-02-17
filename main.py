@@ -261,6 +261,50 @@ def create_collection(
     }
 
 
+@app.put("/collections/{collection_id}")
+def update_collection(
+    collection_id: int,
+    collection: CollectionSchema,
+    user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    owned_collection = get_owned_collection(collection_id, user_id, db)
+
+    name = collection.name.strip()
+    class_name = collection.class_name.strip() if collection.class_name else None
+    color = normalize_collection_color(collection.color)
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Collection name is required")
+
+    duplicate = (
+        db.query(CollectionDB)
+        .filter(
+            CollectionDB.user_id == user_id,
+            CollectionDB.id != collection_id,
+            CollectionDB.name == name,
+            CollectionDB.class_name == class_name,
+        )
+        .first()
+    )
+    if duplicate:
+        raise HTTPException(status_code=409, detail="A matching collection already exists")
+
+    owned_collection.name = name
+    owned_collection.class_name = class_name
+    owned_collection.color = color
+    db.commit()
+    db.refresh(owned_collection)
+
+    return {
+        "message": "Collection updated",
+        "id": owned_collection.id,
+        "name": owned_collection.name,
+        "class_name": owned_collection.class_name,
+        "color": owned_collection.color,
+    }
+
+
 @app.delete("/collections/{collection_id}")
 def delete_collection(
     collection_id: int,
