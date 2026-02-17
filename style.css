@@ -7,6 +7,10 @@
     --line: rgba(95, 86, 76, 0.22);
     --brand: #0f4c5c;
     --brand-strong: #083e4d;
+    --collection-color: #0f4c5c;
+    --collection-color-deep: #0a3f4e;
+    --collection-color-bright: #2b7081;
+    --collection-soft: rgba(15, 76, 92, 0.16);
     --accent: #bd8b3b;
     --danger: #b5442d;
     --shadow-lg: 0 24px 58px rgba(32, 26, 20, 0.16);
@@ -122,7 +126,7 @@ body::after {
     border-radius: 24px;
     background: var(--panel);
     backdrop-filter: blur(8px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-lg), inset 0 0 0 1px var(--collection-soft);
     animation: riseIn 0.8s 0.08s ease both;
 }
 
@@ -208,7 +212,7 @@ body::after {
 
 .card-back {
     background:
-        linear-gradient(155deg, #0f4c5c 0%, #1c6071 55%, #2b7081 100%);
+        linear-gradient(155deg, var(--collection-color-deep) 0%, var(--collection-color) 55%, var(--collection-color-bright) 100%);
     color: #f8fbff;
     transform: rotateY(180deg);
 }
@@ -447,6 +451,36 @@ button:active {
     font-weight: 600;
 }
 
+.color-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.color-input-row input[type="color"] {
+    width: 60px;
+    min-width: 60px;
+    height: 44px;
+    padding: 4px;
+    border-radius: 12px;
+    border: 1px solid rgba(95, 86, 76, 0.26);
+    background: rgba(255, 255, 255, 0.95);
+    cursor: pointer;
+}
+
+.color-input-row span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(95, 86, 76, 0.2);
+    background: rgba(255, 255, 255, 0.7);
+    color: #4e463f;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
 .modal-actions {
     display: flex;
     justify-content: flex-end;
@@ -473,6 +507,10 @@ button:active {
 .modal-welcome {
     text-align: center;
     background: linear-gradient(155deg, rgba(255, 251, 242, 0.98), rgba(243, 233, 217, 0.95));
+}
+
+.modal-notice {
+    text-align: center;
 }
 
 .modal-welcome h2 {

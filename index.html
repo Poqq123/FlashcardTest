@@ -164,6 +164,12 @@
 
                 <label for="collection-class-input">Class Name (Optional)</label>
                 <input id="collection-class-input" name="class_name" type="text" placeholder="Physics 101" />
+
+                <label for="collection-color-input">Collection Color</label>
+                <div class="color-input-row">
+                    <input id="collection-color-input" name="color" type="color" value="#0f4c5c" />
+                    <span id="collection-color-value">#0F4C5C</span>
+                </div>
                 <p id="collection-error" class="modal-error" aria-live="polite"></p>
 
                 <div class="modal-actions">
@@ -214,6 +220,16 @@
             <p class="modal-subtitle">You are signed in as <span id="welcome-user-name">Learner</span>.</p>
             <div class="modal-actions modal-single-action">
                 <button id="welcome-continue-btn" type="button" class="modal-save-btn">Start Studying</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notice-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-dialog modal-compact modal-notice" role="dialog" aria-modal="true" aria-labelledby="notice-title">
+            <h2 id="notice-title">Sign In Required</h2>
+            <p id="notice-message" class="modal-subtitle">Please log in to continue.</p>
+            <div class="modal-actions modal-single-action">
+                <button id="notice-ok-btn" type="button" class="modal-save-btn">Got It</button>
             </div>
         </div>
     </div>

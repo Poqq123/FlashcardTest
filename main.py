@@ -1,5 +1,6 @@
 # main.py
 import os
+import re
 from typing import Optional
 
 import jwt
@@ -23,6 +24,8 @@ if not DATABASE_URL:
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+DEFAULT_COLLECTION_COLOR = "#0F4C5C"
+HEX_COLOR_PATTERN = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 
 class CollectionDB(Base):
@@ -32,6 +35,7 @@ class CollectionDB(Base):
     user_id = Column(String, index=True)
     name = Column(String)
     class_name = Column(String, nullable=True)
+    color = Column(String, nullable=True)
 
 
 class CardDB(Base):
@@ -50,20 +54,24 @@ def ensure_schema() -> None:
     create_all() creates new tables but does not alter existing ones.
     """
     inspector = inspect(engine)
-    if "flashcards" not in inspector.get_table_names():
-        return
-
-    existing_columns = {column["name"] for column in inspector.get_columns("flashcards")}
+    table_names = set(inspector.get_table_names())
     with engine.begin() as connection:
-        if "user_id" not in existing_columns:
-            connection.execute(text("ALTER TABLE flashcards ADD COLUMN user_id VARCHAR"))
-        if "collection_id" not in existing_columns:
-            connection.execute(text("ALTER TABLE flashcards ADD COLUMN collection_id INTEGER"))
+        if "flashcards" in table_names:
+            flashcard_columns = {column["name"] for column in inspector.get_columns("flashcards")}
+            if "user_id" not in flashcard_columns:
+                connection.execute(text("ALTER TABLE flashcards ADD COLUMN user_id VARCHAR"))
+            if "collection_id" not in flashcard_columns:
+                connection.execute(text("ALTER TABLE flashcards ADD COLUMN collection_id INTEGER"))
 
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_flashcards_user_id ON flashcards (user_id)"))
-        connection.execute(
-            text("CREATE INDEX IF NOT EXISTS ix_flashcards_collection_id ON flashcards (collection_id)")
-        )
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_flashcards_user_id ON flashcards (user_id)"))
+            connection.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_flashcards_collection_id ON flashcards (collection_id)")
+            )
+
+        if "collections" in table_names:
+            collection_columns = {column["name"] for column in inspector.get_columns("collections")}
+            if "color" not in collection_columns:
+                connection.execute(text("ALTER TABLE collections ADD COLUMN color VARCHAR"))
 
 
 Base.metadata.create_all(bind=engine)
@@ -171,6 +179,17 @@ class CardSchema(BaseModel):
 class CollectionSchema(BaseModel):
     name: str
     class_name: Optional[str] = None
+    color: Optional[str] = None
+
+
+def normalize_collection_color(color: Optional[str]) -> str:
+    if not color:
+        return DEFAULT_COLLECTION_COLOR
+
+    candidate = color.strip()
+    if not HEX_COLOR_PATTERN.match(candidate):
+        raise HTTPException(status_code=400, detail="Collection color must be a hex value like #0F4C5C")
+    return candidate.upper()
 
 
 def get_owned_collection(collection_id: int, user_id: str, db: Session) -> CollectionDB:
@@ -211,6 +230,7 @@ def create_collection(
 ):
     name = collection.name.strip()
     class_name = collection.class_name.strip() if collection.class_name else None
+    color = normalize_collection_color(collection.color)
 
     if not name:
         raise HTTPException(status_code=400, detail="Collection name is required")
@@ -227,7 +247,7 @@ def create_collection(
     if duplicate:
         raise HTTPException(status_code=409, detail="A matching collection already exists")
 
-    new_collection = CollectionDB(user_id=user_id, name=name, class_name=class_name)
+    new_collection = CollectionDB(user_id=user_id, name=name, class_name=class_name, color=color)
     db.add(new_collection)
     db.commit()
     db.refresh(new_collection)
@@ -237,6 +257,7 @@ def create_collection(
         "id": new_collection.id,
         "name": new_collection.name,
         "class_name": new_collection.class_name,
+        "color": new_collection.color,
     }
 
 

@@ -1,6 +1,7 @@
 // script.js
 // PASTE YOUR CODESPACE URL HERE (No trailing slash)
 const API_URL = "https://flashcardapp-pwic.onrender.com";
+const DEFAULT_COLLECTION_COLOR = "#0F4C5C";
 
 let flashcards = [];
 let collections = [];
@@ -29,6 +30,8 @@ const collectionModal = document.getElementById("collection-modal");
 const collectionForm = document.getElementById("collection-form");
 const collectionNameInput = document.getElementById("collection-name-input");
 const collectionClassInput = document.getElementById("collection-class-input");
+const collectionColorInput = document.getElementById("collection-color-input");
+const collectionColorValue = document.getElementById("collection-color-value");
 const collectionError = document.getElementById("collection-error");
 
 const editCardModal = document.getElementById("edit-card-modal");
@@ -45,6 +48,10 @@ const confirmActionButton = document.getElementById("confirm-action-btn");
 const welcomeModal = document.getElementById("welcome-modal");
 const welcomeUserName = document.getElementById("welcome-user-name");
 const welcomeContinueBtn = document.getElementById("welcome-continue-btn");
+const noticeModal = document.getElementById("notice-modal");
+const noticeTitle = document.getElementById("notice-title");
+const noticeMessage = document.getElementById("notice-message");
+const noticeOkBtn = document.getElementById("notice-ok-btn");
 
 const modalOverlays = Array.from(document.querySelectorAll(".modal-overlay"));
 
@@ -84,6 +91,54 @@ function getCollectionDisplayName(collection) {
     if (!collection) return "All Collections";
     if (collection.class_name) return `${collection.name} (${collection.class_name})`;
     return collection.name;
+}
+
+function sanitizeCollectionColor(color) {
+    const candidate = (color || "").trim();
+    if (!/^#[0-9A-Fa-f]{6}$/.test(candidate)) return DEFAULT_COLLECTION_COLOR;
+    return candidate.toUpperCase();
+}
+
+function toRgba(hexColor, alpha) {
+    const color = sanitizeCollectionColor(hexColor).slice(1);
+    const r = parseInt(color.slice(0, 2), 16);
+    const g = parseInt(color.slice(2, 4), 16);
+    const b = parseInt(color.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function shiftHexColor(hexColor, ratio) {
+    const color = sanitizeCollectionColor(hexColor).slice(1);
+    const transform = (value) => {
+        const normalized = parseInt(value, 16);
+        const shifted = ratio >= 0
+            ? normalized + (255 - normalized) * ratio
+            : normalized * (1 + ratio);
+        return Math.max(0, Math.min(255, Math.round(shifted)));
+    };
+
+    const r = transform(color.slice(0, 2));
+    const g = transform(color.slice(2, 4));
+    const b = transform(color.slice(4, 6));
+    const toHex = (value) => value.toString(16).padStart(2, "0");
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+}
+
+function applyCollectionTheme(color) {
+    const base = sanitizeCollectionColor(color);
+    const deep = shiftHexColor(base, -0.18);
+    const bright = shiftHexColor(base, 0.15);
+    document.documentElement.style.setProperty("--collection-color", base);
+    document.documentElement.style.setProperty("--collection-color-deep", deep);
+    document.documentElement.style.setProperty("--collection-color-bright", bright);
+    document.documentElement.style.setProperty("--collection-soft", toRgba(base, 0.16));
+}
+
+function normalizeCollectionPayload(collection) {
+    return {
+        ...collection,
+        color: sanitizeCollectionColor(collection?.color),
+    };
 }
 
 function setModalError(element, message = "") {
@@ -173,11 +228,13 @@ function updateActiveCollectionLabel() {
     if (!activeCollectionText) return;
     if (activeCollection === "all") {
         activeCollectionText.textContent = "Showing: All Collections";
+        applyCollectionTheme(DEFAULT_COLLECTION_COLOR);
         return;
     }
 
     const selected = collections.find((collection) => String(collection.id) === String(activeCollection));
     activeCollectionText.textContent = `Showing: ${getCollectionDisplayName(selected)}`;
+    applyCollectionTheme(selected?.color || DEFAULT_COLLECTION_COLOR);
 }
 
 function renderCollectionOptions() {
@@ -200,6 +257,7 @@ async function initializeApp() {
     setupEditCardModal();
     setupConfirmModal();
     setupWelcomeModal();
+    setupNoticeModal();
     renderCollectionOptions();
     await fetchCollections();
     await fetchFlashcards();
@@ -213,6 +271,13 @@ function setupAddCardModal() {
 function setupCollectionModal() {
     if (!collectionForm) return;
     collectionForm.addEventListener("submit", handleCollectionFormSubmit);
+    if (collectionColorInput) {
+        collectionColorInput.addEventListener("input", () => {
+            if (collectionColorValue) {
+                collectionColorValue.textContent = sanitizeCollectionColor(collectionColorInput.value);
+            }
+        });
+    }
 }
 
 function setupEditCardModal() {
@@ -259,6 +324,24 @@ function setupWelcomeModal() {
     }
 }
 
+function setupNoticeModal() {
+    if (noticeOkBtn) {
+        noticeOkBtn.addEventListener("click", () => {
+            closeModalById("notice-modal");
+        });
+    }
+}
+
+function showNoticeModal(title, message) {
+    if (!noticeModal || !noticeTitle || !noticeMessage) {
+        alert(message || title || "Notice");
+        return;
+    }
+    noticeTitle.textContent = title || "Notice";
+    noticeMessage.textContent = message || "";
+    openModal(noticeModal);
+}
+
 async function fetchCollections() {
     if (!hasValidToken()) {
         collections = [];
@@ -284,7 +367,8 @@ async function fetchCollections() {
             throw new Error(`Server error: ${response.status}`);
         }
 
-        collections = await response.json();
+        const payload = await response.json();
+        collections = Array.isArray(payload) ? payload.map(normalizeCollectionPayload) : [];
 
         if (
             activeCollection !== "all" &&
@@ -307,14 +391,18 @@ function createCollection() {
 }
 
 function openCollectionModal() {
-    if (!collectionModal || !collectionNameInput || !collectionClassInput) return;
+    if (!collectionModal || !collectionNameInput || !collectionClassInput || !collectionColorInput) return;
     if (!hasValidToken()) {
-        alert("You must be logged in to create a collection.");
+        showNoticeModal("Sign In Required", "You must be logged in to add a collection.");
         return;
     }
 
     collectionNameInput.value = "";
     collectionClassInput.value = "";
+    collectionColorInput.value = DEFAULT_COLLECTION_COLOR.toLowerCase();
+    if (collectionColorValue) {
+        collectionColorValue.textContent = DEFAULT_COLLECTION_COLOR;
+    }
     setModalError(collectionError);
     openModal(collectionModal);
     collectionNameInput.focus();
@@ -322,10 +410,11 @@ function openCollectionModal() {
 
 async function handleCollectionFormSubmit(event) {
     event.preventDefault();
-    if (!collectionNameInput || !collectionClassInput) return;
+    if (!collectionNameInput || !collectionClassInput || !collectionColorInput) return;
 
     const name = collectionNameInput.value.trim();
     const className = collectionClassInput.value.trim();
+    const color = sanitizeCollectionColor(collectionColorInput.value);
 
     if (!name) {
         setModalError(collectionError, "Collection name cannot be empty.");
@@ -338,7 +427,8 @@ async function handleCollectionFormSubmit(event) {
             headers: getHeaders(),
             body: JSON.stringify({
                 name: name,
-                class_name: className || null
+                class_name: className || null,
+                color: color
             })
         });
 
@@ -425,7 +515,7 @@ function openAddCardModal() {
     if (!addCardModal || !addCardQuestionInput || !addCardAnswerInput) return;
 
     if (!hasValidToken()) {
-        alert("You must be logged in to add a card.");
+        showNoticeModal("Sign In Required", "You must be logged in to add a card.");
         return;
     }
 
@@ -470,7 +560,7 @@ async function saveFlashcard(question, answer, errorElement = null) {
         if (errorElement) {
             setModalError(errorElement, "You must be logged in to add a card.");
         } else {
-            alert("You must be logged in to add a card.");
+            showNoticeModal("Sign In Required", "You must be logged in to add a card.");
         }
         return false;
     }
