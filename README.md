@@ -145,9 +145,11 @@ uvicorn main:app --reload --env-file .env
 Then open `index.html` through your static host or local web server.
 
 ## Future Improvements Planned
-- Add collection editing (rename, change class name) *completed 02/16/26*
+- Add collection editing (rename, change class name) **(*completed 02/16/26*)**
+- Add collection color coding for easier UI differentiation **(*completed 02/16/26*)**
+- Allow bulk flashcards import/export by collection via JSON **(*completed 02/19/26*)**
 - Generate practice quizzes based on collections
-- Add collection sharing between users (requires more complex permissions)
-- Allow bulk card import/export by collection 
-- Add collection color coding for easier UI differentiation *completed 02/16/26*
-- Add dark mode support for better accessibility
+- Add collection sharing via link between users (requires more complex permissions)
+- Convert login buttons to a single profile button for logging in and out, and showing user info
+
+
