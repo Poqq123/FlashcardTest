@@ -90,48 +90,59 @@
             <p class="subhead">Organize cards by class collections and review with a clean, focused workflow.</p>
         </header>
 
-        <div class="flashcard-container">
-            <div class="collection-controls">
-                <label for="collection-select">Collection:</label>
-                <div class="collection-select-wrap">
-                    <select id="collection-select" onchange="onCollectionChange()">
-                        <option value="all">All Collections</option>
-                    </select>
-                    <span id="collection-color-swatch" class="collection-color-swatch" title="Selected collection color"></span>
+        <div class="study-layout">
+            <aside class="collection-sidebar">
+                <div class="sidebar-header">
+                    <h2>Collections</h2>
+                    <p>Folders with nested cards</p>
                 </div>
-                <button class="collection-btn" onclick="createCollection()">New Collection</button>
-                <button id="edit-collection-btn" class="collection-edit-btn" onclick="openEditCollectionModal()">Edit Collection</button>
-                <button id="delete-collection-btn" class="collection-delete-btn" onclick="deleteCollection()">Delete Collection</button>
-            </div>
-            <p id="active-collection" class="active-collection">Showing: All Collections</p>
+                <div class="collection-action-icons">
+                    <button class="collection-icon-btn collection-icon-add" onclick="createCollection()" aria-label="Add collection">+</button>
+                    <button id="delete-collection-btn" class="collection-icon-btn collection-icon-delete" onclick="deleteCollection()" aria-label="Delete selected collection">&#10005;</button>
+                    <button id="edit-collection-btn" class="collection-icon-btn collection-icon-edit" onclick="openEditCollectionModal()" aria-label="Edit selected collection">&#9998;</button>
+                </div>
+                <div class="collection-tree-wrap">
+                    <ul id="collection-tree" class="collection-tree">
+                        <li class="collection-tree-empty">No collections yet.</li>
+                    </ul>
+                </div>
+                <select id="collection-select" onchange="onCollectionChange()" class="collection-select-hidden">
+                    <option value="all">All Collections</option>
+                </select>
+                <span id="collection-color-swatch" class="collection-color-swatch" title="Selected collection color"></span>
+            </aside>
 
-            <div class="flashcard-row">
-                <div class="flashcard" id="flashcard" onclick="flipCard()">
-                    <div class="card-inner" id="card-inner">
-                        <div class="card-front">
-                            <h2 id="card-question">Your Question Will Appear Here</h2>
-                        </div>
-                        <div class="card-back">
-                            <h2 id="card-answer">The Answer Will Appear Here</h2>
+            <div class="flashcard-container">
+                <p id="active-collection" class="active-collection">Showing: All Collections</p>
+
+                <div class="flashcard-row">
+                    <div class="flashcard" id="flashcard" onclick="flipCard()">
+                        <div class="card-inner" id="card-inner">
+                            <div class="card-front">
+                                <h2 id="card-question">Your Question Will Appear Here</h2>
+                            </div>
+                            <div class="card-back">
+                                <h2 id="card-answer">The Answer Will Appear Here</h2>
+                            </div>
                         </div>
                     </div>
+
+                    <button id="save-btn" class="add-btn" onclick="openAddCardModal()" aria-label="Add flashcard">+</button>
                 </div>
 
-                <button id="save-btn" class="add-btn" onclick="openAddCardModal()" aria-label="Add flashcard">+</button>
+                <div class="controls">
+                    <button onclick="prevCard()">&#8592; Previous</button>
+                    <span id="card-index">0 / 0</span>
+                    <button onclick="nextCard()">Next &#8594;</button>
+                </div>
+                
+                <div class="actions">
+                    <button class="edit-btn" onclick="editFlashcard()">Edit Current</button>
+                    <button class="delete-btn" onclick="deleteFlashcard()">Delete Current</button>
+                </div>
+                
+                <p id="error-msg" class="error"></p>
             </div>
-
-            <div class="controls">
-                <button onclick="prevCard()">&#8592; Previous</button>
-                <span id="card-index">0 / 0</span>
-                <button onclick="nextCard()">Next &#8594;</button>
-            </div>
-            
-            <div class="actions">
-                <button class="edit-btn" onclick="editFlashcard()">Edit Current</button>
-                <button class="delete-btn" onclick="deleteFlashcard()">Delete Current</button>
-            </div>
-            
-            <p id="error-msg" class="error"></p>
         </div>
     </div>
 

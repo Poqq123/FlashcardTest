@@ -4,6 +4,7 @@ const API_URL = "https://flashcardapp-pwic.onrender.com";
 const DEFAULT_COLLECTION_COLOR = "#0F4C5C";
 
 let flashcards = [];
+let allFlashcards = [];
 let collections = [];
 let currentIndex = 0;
 let activeCollection = "all";
@@ -18,6 +19,7 @@ const cardInner = document.getElementById("card-inner");
 const cardIndexDisplay = document.getElementById("card-index");
 const flashcardElement = document.getElementById("flashcard");
 const collectionSelect = document.getElementById("collection-select");
+const collectionTree = document.getElementById("collection-tree");
 const activeCollectionText = document.getElementById("active-collection");
 const collectionColorSwatch = document.getElementById("collection-color-swatch");
 const editCollectionButton = document.getElementById("edit-collection-btn");
@@ -153,6 +155,156 @@ function getActiveCollection() {
     return collections.find((collection) => String(collection.id) === String(activeCollection)) || null;
 }
 
+function getFilteredCards() {
+    if (activeCollection === "all") {
+        return [...allFlashcards];
+    }
+    return allFlashcards.filter((card) => String(card.collection_id) === String(activeCollection));
+}
+
+function truncateCardQuestion(question) {
+    const normalized = String(question || "Untitled card").replace(/\s+/g, " ").trim();
+    if (normalized.length <= 50) return normalized;
+    return `${normalized.slice(0, 47)}...`;
+}
+
+function applyActiveCollectionFilter({ preferredCardId = null, resetIndex = false } = {}) {
+    flashcards = getFilteredCards();
+
+    if (resetIndex) {
+        currentIndex = 0;
+    }
+
+    if (preferredCardId !== null) {
+        const preferredIndex = flashcards.findIndex((card) => String(card.id) === String(preferredCardId));
+        currentIndex = preferredIndex >= 0 ? preferredIndex : 0;
+    }
+
+    if (currentIndex >= flashcards.length) {
+        currentIndex = Math.max(0, flashcards.length - 1);
+    }
+    if (currentIndex < 0 || !Number.isInteger(currentIndex)) {
+        currentIndex = 0;
+    }
+
+    updateActiveCollectionLabel();
+    updateCardDisplay();
+}
+
+function setActiveCollection(nextCollection, options = {}) {
+    activeCollection = String(nextCollection || "all");
+    if (collectionSelect) {
+        collectionSelect.value = activeCollection;
+    }
+    applyActiveCollectionFilter(options);
+}
+
+function renderCollectionTree() {
+    if (!collectionTree) return;
+
+    const activeCardId = flashcards[currentIndex]?.id ?? null;
+    collectionTree.innerHTML = "";
+
+    const allFolderItem = document.createElement("li");
+    const allButton = document.createElement("button");
+    allButton.type = "button";
+    allButton.className = `collection-folder-btn ${activeCollection === "all" ? "is-active" : ""}`;
+    allButton.addEventListener("click", () => {
+        setActiveCollection("all", { resetIndex: true });
+    });
+
+    const allDot = document.createElement("span");
+    allDot.className = "folder-dot";
+    allDot.style.background = DEFAULT_COLLECTION_COLOR;
+
+    const allName = document.createElement("span");
+    allName.className = "folder-name";
+    allName.textContent = "All Collections";
+
+    const allCount = document.createElement("span");
+    allCount.className = "folder-count";
+    allCount.textContent = String(allFlashcards.length);
+
+    allButton.appendChild(allDot);
+    allButton.appendChild(allName);
+    allButton.appendChild(allCount);
+    allFolderItem.appendChild(allButton);
+    collectionTree.appendChild(allFolderItem);
+
+    if (!collections.length) {
+        const empty = document.createElement("li");
+        empty.className = "collection-tree-empty";
+        empty.textContent = hasValidToken()
+            ? "No folders yet. Create your first collection."
+            : "Login to load your collections.";
+        collectionTree.appendChild(empty);
+        return;
+    }
+
+    for (const collection of collections) {
+        const folderCards = allFlashcards.filter((card) => String(card.collection_id) === String(collection.id));
+        const isActiveFolder = String(collection.id) === String(activeCollection);
+        const isOpen = activeCollection === "all" || isActiveFolder;
+
+        const folderItem = document.createElement("li");
+
+        const folderButton = document.createElement("button");
+        folderButton.type = "button";
+        folderButton.className = `collection-folder-btn ${isActiveFolder ? "is-active" : ""}`;
+        folderButton.addEventListener("click", () => {
+            setActiveCollection(String(collection.id), { resetIndex: true });
+        });
+
+        const folderDot = document.createElement("span");
+        folderDot.className = "folder-dot";
+        folderDot.style.background = sanitizeCollectionColor(collection.color);
+
+        const folderName = document.createElement("span");
+        folderName.className = "folder-name";
+        folderName.textContent = getCollectionDisplayName(collection);
+
+        const folderCount = document.createElement("span");
+        folderCount.className = "folder-count";
+        folderCount.textContent = String(folderCards.length);
+
+        folderButton.appendChild(folderDot);
+        folderButton.appendChild(folderName);
+        folderButton.appendChild(folderCount);
+        folderItem.appendChild(folderButton);
+
+        const cardList = document.createElement("ul");
+        cardList.className = `collection-card-list ${isOpen ? "is-open" : ""}`;
+
+        if (!folderCards.length) {
+            const emptyCardRow = document.createElement("li");
+            emptyCardRow.className = "collection-card-empty";
+            emptyCardRow.textContent = "No cards in this folder.";
+            cardList.appendChild(emptyCardRow);
+        } else {
+            for (const card of folderCards) {
+                const cardItem = document.createElement("li");
+                const cardButton = document.createElement("button");
+                cardButton.type = "button";
+                cardButton.className = `collection-card-btn ${isActiveFolder && String(card.id) === String(activeCardId) ? "is-active" : ""}`;
+                cardButton.textContent = truncateCardQuestion(card.question);
+                cardButton.title = card.question || "Untitled card";
+                cardButton.addEventListener("click", () => {
+                    setActiveCollection(String(collection.id), {
+                        preferredCardId: card.id,
+                        resetIndex: false
+                    });
+                });
+
+                cardItem.appendChild(cardButton);
+                cardList.appendChild(cardItem);
+            }
+        }
+
+        folderItem.appendChild(cardList);
+        collectionTree.appendChild(folderItem);
+    }
+}
+
 function setModalError(element, message = "") {
     if (element) element.textContent = message;
 }
@@ -285,31 +437,31 @@ function updateCollectionActionButtons(selectedCollection) {
 }
 
 function renderCollectionOptions() {
-    if (!collectionSelect) return;
-    collectionSelect.innerHTML = "";
+    if (collectionSelect) {
+        collectionSelect.innerHTML = "";
 
-    const allOption = document.createElement("option");
-    allOption.value = "all";
-    allOption.textContent = "All Collections";
-    collectionSelect.appendChild(allOption);
+        const allOption = document.createElement("option");
+        allOption.value = "all";
+        allOption.textContent = "All Collections";
+        collectionSelect.appendChild(allOption);
 
-    for (const collection of collections) {
-        const option = document.createElement("option");
-        const collectionColor = sanitizeCollectionColor(collection.color);
-        option.value = String(collection.id);
-        option.textContent = `● ${getCollectionDisplayName(collection)} (${collectionColor})`;
-        option.style.color = collectionColor;
-        option.style.backgroundColor = toRgba(collectionColor, 0.08);
-        collectionSelect.appendChild(option);
+        for (const collection of collections) {
+            const option = document.createElement("option");
+            option.value = String(collection.id);
+            option.textContent = getCollectionDisplayName(collection);
+            collectionSelect.appendChild(option);
+        }
+
+        const optionExists = Array.from(collectionSelect.options).some((option) => option.value === String(activeCollection));
+        if (!optionExists) {
+            activeCollection = "all";
+        }
+
+        collectionSelect.value = activeCollection;
     }
 
-    const optionExists = Array.from(collectionSelect.options).some((option) => option.value === String(activeCollection));
-    if (!optionExists) {
-        activeCollection = "all";
-    }
-
-    collectionSelect.value = activeCollection;
     updateActiveCollectionLabel();
+    renderCollectionTree();
 }
 
 async function initializeApp() {
@@ -595,34 +747,24 @@ async function deleteCollection() {
 }
 
 function onCollectionChange() {
-    if (!collectionSelect) return;
-    activeCollection = collectionSelect.value || "all";
-    updateActiveCollectionLabel();
-    fetchFlashcards();
-}
-
-function buildCardsUrl() {
-    const collectionId = getSelectedCollectionId();
-    if (collectionId === null) {
-        return `${API_URL}/cards`;
-    }
-
-    const params = new URLSearchParams({ collection_id: String(collectionId) });
-    return `${API_URL}/cards?${params.toString()}`;
+    setActiveCollection(collectionSelect?.value || "all", { resetIndex: true });
 }
 
 async function fetchFlashcards() {
     if (!hasValidToken()) {
         cardQuestion.textContent = "Please Login to see your cards.";
         cardAnswer.textContent = "Click the Login button above.";
+        allFlashcards = [];
         flashcards = [];
         currentIndex = 0;
+        updateActiveCollectionLabel();
         updateCardDisplay();
         return;
     }
 
     try {
-        const response = await fetch(buildCardsUrl(), {
+        const previousCardId = flashcards[currentIndex]?.id ?? null;
+        const response = await fetch(`${API_URL}/cards`, {
             method: "GET",
             headers: getHeaders()
         });
@@ -630,6 +772,12 @@ async function fetchFlashcards() {
         if (response.status === 401) {
             cardQuestion.textContent = "Session expired.";
             cardAnswer.textContent = "Please logout and login again.";
+            allFlashcards = [];
+            flashcards = [];
+            currentIndex = 0;
+            cardIndexDisplay.textContent = "0 / 0";
+            updateActiveCollectionLabel();
+            renderCollectionTree();
             return;
         }
 
@@ -637,13 +785,19 @@ async function fetchFlashcards() {
             throw new Error(`Server error: ${response.status}`);
         }
 
-        flashcards = await response.json();
-        currentIndex = 0;
-        updateCardDisplay();
+        const payload = await response.json();
+        allFlashcards = Array.isArray(payload) ? payload : [];
+        applyActiveCollectionFilter({ preferredCardId: previousCardId, resetIndex: false });
     } catch (error) {
         console.error("Fetch error:", error);
+        allFlashcards = [];
+        flashcards = [];
+        currentIndex = 0;
         cardQuestion.textContent = "Error loading cards.";
         cardAnswer.textContent = "Check console for details.";
+        cardIndexDisplay.textContent = "0 / 0";
+        updateActiveCollectionLabel();
+        renderCollectionTree();
     }
 }
 
@@ -721,9 +875,11 @@ async function saveFlashcard(question, answer, errorElement = null) {
             throw new Error(`Server error: ${response.status}`);
         }
 
+        const createdCard = await response.json().catch(() => ({}));
         await fetchFlashcards();
         setTimeout(() => {
-            currentIndex = flashcards.length - 1;
+            const createdIndex = flashcards.findIndex((card) => String(card.id) === String(createdCard.id));
+            currentIndex = createdIndex >= 0 ? createdIndex : Math.max(0, flashcards.length - 1);
             updateCardDisplay();
             playCardAnimation("pop");
         }, 100);
@@ -882,10 +1038,19 @@ flashcardElement?.addEventListener("animationend", () => {
 });
 
 function updateCardDisplay() {
+    if (!hasValidToken()) {
+        cardQuestion.textContent = "Please Login to see your cards.";
+        cardAnswer.textContent = "Click the Login button above.";
+        cardIndexDisplay.textContent = "0 / 0";
+        renderCollectionTree();
+        return;
+    }
+
     if (flashcards.length === 0) {
         cardQuestion.textContent = activeCollection === "all" ? "No cards yet." : "No cards in this collection yet.";
         cardAnswer.textContent = "...";
         cardIndexDisplay.textContent = "0 / 0";
+        renderCollectionTree();
         return;
     }
 
@@ -893,6 +1058,7 @@ function updateCardDisplay() {
     cardQuestion.textContent = flashcards[currentIndex].question;
     cardAnswer.textContent = flashcards[currentIndex].answer;
     cardIndexDisplay.textContent = `${currentIndex + 1} / ${flashcards.length}`;
+    renderCollectionTree();
 }
 
 function flipCard() {
