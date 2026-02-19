@@ -93,7 +93,22 @@
         <div class="study-layout">
             <aside class="collection-sidebar">
                 <div class="sidebar-header">
-                    <h2>Collections</h2>
+                    <div class="sidebar-title-row">
+                        <h2>Collections</h2>
+                        <div class="sidebar-transfer-icons">
+                            <button id="export-collection-btn" class="transfer-icon-btn" type="button" aria-label="Export selected collection as JSON" title="Export selected collection">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 3v9m0 0-3.5-3.5M12 12l3.5-3.5M4.5 12.8V18a1.5 1.5 0 0 0 1.5 1.5h12A1.5 1.5 0 0 0 19.5 18v-5.2" />
+                                </svg>
+                            </button>
+                            <button id="import-collection-btn" class="transfer-icon-btn" type="button" aria-label="Import collection from JSON" title="Import collection">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 21v-9m0 0-3.5 3.5M12 12l3.5 3.5M4.5 12.8V6a1.5 1.5 0 0 1 1.5-1.5h12A1.5 1.5 0 0 1 19.5 6v6.8" />
+                                </svg>
+                            </button>
+                            <input id="import-collection-file" type="file" accept="application/json,.json" hidden />
+                        </div>
+                    </div>
                     <p>Folders with nested cards</p>
                 </div>
                 <div class="collection-action-icons">

@@ -142,6 +142,13 @@ body::after {
     text-align: left;
 }
 
+.sidebar-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
 .sidebar-header h2 {
     margin: 0;
     font-family: "Cormorant Garamond", Georgia, serif;
@@ -155,11 +162,17 @@ body::after {
     font-size: 0.9rem;
 }
 
+.sidebar-transfer-icons {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .collection-action-icons {
     display: flex;
     justify-content: center;
     gap: 12px;
-    margin: 14px 0 12px;
+    margin: 12px 0;
 }
 
 .collection-icon-btn {
@@ -195,8 +208,43 @@ body::after {
     transform: translateY(1px);
 }
 
+.transfer-icon-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(31, 41, 58, 0.2);
+    box-shadow: 0 7px 14px rgba(28, 37, 51, 0.13);
+    color: #1d2738;
+}
+
+.transfer-icon-btn svg {
+    width: 25px;
+    height: 25px;
+    stroke: currentColor;
+    stroke-width: 2.1;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.transfer-icon-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 9px 16px rgba(28, 37, 51, 0.17);
+}
+
+.transfer-icon-btn:active {
+    transform: translateY(1px);
+}
+
 #edit-collection-btn:disabled,
-#delete-collection-btn:disabled {
+#delete-collection-btn:disabled,
+#export-collection-btn:disabled,
+#import-collection-btn:disabled {
     cursor: not-allowed;
     opacity: 0.5;
     filter: grayscale(0.15);
@@ -204,7 +252,9 @@ body::after {
 }
 
 #edit-collection-btn:disabled:hover,
-#delete-collection-btn:disabled:hover {
+#delete-collection-btn:disabled:hover,
+#export-collection-btn:disabled:hover,
+#import-collection-btn:disabled:hover {
     transform: none;
 }
 
@@ -779,10 +829,29 @@ button:active {
         justify-content: flex-start;
     }
 
+    .sidebar-title-row {
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .sidebar-transfer-icons {
+        margin-top: 2px;
+    }
+
     .collection-icon-btn {
         width: 62px;
         height: 62px;
         font-size: 2rem;
+    }
+
+    .transfer-icon-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .transfer-icon-btn svg {
+        width: 22px;
+        height: 22px;
     }
 
     .flashcard-row {

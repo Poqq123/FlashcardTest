@@ -24,6 +24,9 @@ const activeCollectionText = document.getElementById("active-collection");
 const collectionColorSwatch = document.getElementById("collection-color-swatch");
 const editCollectionButton = document.getElementById("edit-collection-btn");
 const deleteCollectionButton = document.getElementById("delete-collection-btn");
+const exportCollectionButton = document.getElementById("export-collection-btn");
+const importCollectionButton = document.getElementById("import-collection-btn");
+const importCollectionFileInput = document.getElementById("import-collection-file");
 
 const addCardModal = document.getElementById("add-card-modal");
 const addCardForm = document.getElementById("add-card-form");
@@ -431,9 +434,14 @@ function updateActiveCollectionLabel() {
 }
 
 function updateCollectionActionButtons(selectedCollection) {
-    const disabled = !hasValidToken() || !selectedCollection;
-    if (editCollectionButton) editCollectionButton.disabled = disabled;
-    if (deleteCollectionButton) deleteCollectionButton.disabled = disabled;
+    const canUseCollections = hasValidToken();
+    const hasSelection = Boolean(selectedCollection);
+    const editDeleteDisabled = !canUseCollections || !hasSelection;
+
+    if (editCollectionButton) editCollectionButton.disabled = editDeleteDisabled;
+    if (deleteCollectionButton) deleteCollectionButton.disabled = editDeleteDisabled;
+    if (exportCollectionButton) exportCollectionButton.disabled = editDeleteDisabled;
+    if (importCollectionButton) importCollectionButton.disabled = !canUseCollections;
 }
 
 function renderCollectionOptions() {
@@ -473,6 +481,7 @@ async function initializeApp() {
     setupConfirmModal();
     setupWelcomeModal();
     setupNoticeModal();
+    setupImportExportControls();
     renderCollectionOptions();
     await fetchCollections();
     await fetchFlashcards();
@@ -547,6 +556,28 @@ function setupNoticeModal() {
     }
 }
 
+function setupImportExportControls() {
+    if (exportCollectionButton) {
+        exportCollectionButton.addEventListener("click", exportCollectionAsJson);
+    }
+
+    if (importCollectionButton) {
+        importCollectionButton.addEventListener("click", () => {
+            if (!hasValidToken()) {
+                showNoticeModal("Sign In Required", "You must be logged in to import collections.");
+                return;
+            }
+            if (!importCollectionFileInput) return;
+            importCollectionFileInput.value = "";
+            importCollectionFileInput.click();
+        });
+    }
+
+    if (importCollectionFileInput) {
+        importCollectionFileInput.addEventListener("change", handleCollectionImportFile);
+    }
+}
+
 function showNoticeModal(title, message) {
     if (!noticeModal || !noticeTitle || !noticeMessage) {
         alert(message || title || "Notice");
@@ -555,6 +586,205 @@ function showNoticeModal(title, message) {
     noticeTitle.textContent = title || "Notice";
     noticeMessage.textContent = message || "";
     openModal(noticeModal);
+}
+
+function makeSafeExportFileName(name) {
+    const base = String(name || "collection")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+    return `${base || "collection"}-flashlearn.json`;
+}
+
+function exportCollectionAsJson() {
+    if (!hasValidToken()) {
+        showNoticeModal("Sign In Required", "You must be logged in to export collections.");
+        return;
+    }
+
+    const selectedCollection = getActiveCollection();
+    if (!selectedCollection) {
+        showNoticeModal("Select a Collection", "Choose a collection folder first, then export.");
+        return;
+    }
+
+    const cards = allFlashcards
+        .filter((card) => String(card.collection_id) === String(selectedCollection.id))
+        .map((card) => ({
+            question: String(card.question || "").trim(),
+            answer: String(card.answer || "").trim(),
+        }));
+
+    const exportPayload = {
+        format: "flashlearn.collection.export",
+        version: 1,
+        exported_at: new Date().toISOString(),
+        collection: {
+            name: selectedCollection.name,
+            class_name: selectedCollection.class_name || null,
+            color: sanitizeCollectionColor(selectedCollection.color),
+        },
+        cards,
+    };
+
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = makeSafeExportFileName(selectedCollection.name);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(downloadUrl);
+}
+
+function parseImportedCollectionPayload(rawText) {
+    let parsed;
+    try {
+        parsed = JSON.parse(rawText);
+    } catch (error) {
+        throw new Error("Invalid JSON file. Please select a valid collection export.");
+    }
+
+    if (!parsed || typeof parsed !== "object") {
+        throw new Error("Invalid file structure.");
+    }
+
+    const sourceCollection = parsed.collection;
+    const sourceCards = parsed.cards;
+    const sourceName = typeof sourceCollection?.name === "string" ? sourceCollection.name.trim() : "";
+    if (!sourceName) {
+        throw new Error("Collection name is missing in the import file.");
+    }
+
+    const sourceClassName = typeof sourceCollection?.class_name === "string"
+        ? sourceCollection.class_name.trim()
+        : "";
+
+    const sourceColor = typeof sourceCollection?.color === "string"
+        ? sourceCollection.color.trim()
+        : DEFAULT_COLLECTION_COLOR;
+    const color = /^#[0-9A-Fa-f]{6}$/.test(sourceColor)
+        ? sanitizeCollectionColor(sourceColor)
+        : DEFAULT_COLLECTION_COLOR;
+
+    if (!Array.isArray(sourceCards)) {
+        throw new Error("Cards are missing or malformed in the import file.");
+    }
+
+    const cards = sourceCards
+        .map((card) => ({
+            question: String(card?.question || "").trim(),
+            answer: String(card?.answer || "").trim(),
+        }))
+        .filter((card) => card.question && card.answer);
+
+    if (sourceCards.length > 0 && cards.length === 0) {
+        throw new Error("No valid cards were found in this file.");
+    }
+
+    return {
+        collection: {
+            name: sourceName,
+            class_name: sourceClassName || null,
+            color,
+        },
+        cards,
+    };
+}
+
+async function createImportedCollectionWithRetry(collectionData) {
+    const baseName = collectionData.name;
+    const className = collectionData.class_name || null;
+    const color = sanitizeCollectionColor(collectionData.color);
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+        const suffix = attempt === 0 ? "" : attempt === 1 ? " (Imported)" : ` (Imported ${attempt})`;
+        const candidateName = `${baseName}${suffix}`;
+
+        const response = await fetch(`${API_URL}/collections`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({
+                name: candidateName,
+                class_name: className,
+                color,
+            })
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (response.status === 401) {
+            throw new Error("Session expired. Please login again.");
+        }
+        if (response.status === 409) {
+            continue;
+        }
+        if (!response.ok) {
+            throw new Error(payload.detail || `Collection import failed (HTTP ${response.status}).`);
+        }
+
+        return normalizeCollectionPayload(payload);
+    }
+
+    throw new Error("Could not create the imported collection because of repeated name conflicts.");
+}
+
+async function importCollectionPayload(importPayload) {
+    const newCollection = await createImportedCollectionWithRetry(importPayload.collection);
+    let importedCount = 0;
+
+    for (const card of importPayload.cards) {
+        const response = await fetch(`${API_URL}/cards`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({
+                question: card.question,
+                answer: card.answer,
+                collection_id: newCollection.id,
+            })
+        });
+
+        if (response.status === 401) {
+            throw new Error("Session expired. Please login again.");
+        }
+        if (!response.ok) {
+            console.error("Skipping failed imported card:", response.status);
+            continue;
+        }
+        importedCount += 1;
+    }
+
+    activeCollection = String(newCollection.id);
+    await fetchCollections();
+    await fetchFlashcards();
+
+    showNoticeModal(
+        "Import Complete",
+        `Imported ${importedCount} of ${importPayload.cards.length} card(s) into ${getCollectionDisplayName(newCollection)}.`
+    );
+}
+
+async function handleCollectionImportFile(event) {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+
+    try {
+        if (!hasValidToken()) {
+            throw new Error("You must be logged in to import collections.");
+        }
+
+        const rawText = await file.text();
+        const importPayload = parseImportedCollectionPayload(rawText);
+        await importCollectionPayload(importPayload);
+    } catch (error) {
+        console.error("Import failed:", error);
+        showNoticeModal("Import Failed", error?.message || "Could not import this file right now.");
+    } finally {
+        if (importCollectionFileInput) {
+            importCollectionFileInput.value = "";
+        }
+    }
 }
 
 async function fetchCollections() {
